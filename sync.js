@@ -1,8 +1,9 @@
 // ============================================================
 // SYNC — sincroniza Store.state entre dispositivos.
-// Usa la API REST de Firestore (sin SDK, sin cuentas de usuario):
-// cada grupo de dispositivos comparte un "código de sincronización"
-// de 8 caracteres que hace de identificador + contraseña.
+// Usa la API REST de Supabase (PostgREST, sin SDK, sin cuentas de
+// usuario): cada grupo de dispositivos comparte un "código de
+// sincronización" de 8 caracteres que hace de identificador +
+// contraseña dentro de la tabla "syncs".
 //
 // Si SYNC_CONFIG (sync-config.js) está vacío, todas las funciones de
 // aquí no hacen nada y la app sigue siendo 100% local, como antes.
@@ -15,7 +16,7 @@ const Sync = {
   lastStatus: "idle", // idle | syncing | ok | error
 
   isConfigured() {
-    return !!(SYNC_CONFIG.firebaseProjectId && SYNC_CONFIG.firebaseApiKey);
+    return !!(SYNC_CONFIG.supabaseUrl && SYNC_CONFIG.supabaseUrl.trim() && SYNC_CONFIG.supabaseAnonKey && SYNC_CONFIG.supabaseAnonKey.trim());
   },
 
   isEnabled() {
@@ -50,22 +51,33 @@ const Sync = {
     return s;
   },
 
-  docUrl(extra) {
-    const code = this.getCode();
-    return `https://firestore.googleapis.com/v1/projects/${SYNC_CONFIG.firebaseProjectId}/databases/(default)/documents/syncs/${code}?key=${SYNC_CONFIG.firebaseApiKey}${extra || ""}`;
+  baseUrl() {
+    return SYNC_CONFIG.supabaseUrl.replace(/\/$/, "");
+  },
+
+  headers(extra) {
+    return Object.assign(
+      {
+        apikey: SYNC_CONFIG.supabaseAnonKey,
+        Authorization: `Bearer ${SYNC_CONFIG.supabaseAnonKey}`,
+        "Content-Type": "application/json",
+      },
+      extra || {}
+    );
   },
 
   async pull() {
     if (!this.isConfigured()) return null;
+    const code = this.getCode();
     try {
-      const res = await fetch(this.docUrl());
-      if (res.status === 404) return null;
+      const res = await fetch(`${this.baseUrl()}/rest/v1/syncs?code=eq.${code}&select=data,updated_at`, {
+        headers: this.headers(),
+      });
       if (!res.ok) return null;
-      const json = await res.json();
-      const raw = json.fields && json.fields.data && json.fields.data.stringValue;
-      const updatedAt = json.fields && json.fields.updatedAt ? parseInt(json.fields.updatedAt.integerValue, 10) : 0;
-      if (!raw) return null;
-      return { state: JSON.parse(raw), updatedAt: updatedAt || 0 };
+      const rows = await res.json();
+      if (!rows || !rows.length) return null; // todavía no hay nada con este código
+      const row = rows[0];
+      return { state: row.data, updatedAt: row.updated_at || 0 };
     } catch (e) {
       return null;
     }
@@ -73,18 +85,13 @@ const Sync = {
 
   async push(state) {
     if (!this.isConfigured() || !this.isEnabled()) return false;
-    const body = {
-      fields: {
-        data: { stringValue: JSON.stringify(state) },
-        updatedAt: { integerValue: String(state.updatedAt || Date.now()) },
-      },
-    };
+    const code = this.getCode();
     try {
       this.lastStatus = "syncing";
-      const res = await fetch(this.docUrl("&updateMask.fieldPaths=data&updateMask.fieldPaths=updatedAt"), {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+      const res = await fetch(`${this.baseUrl()}/rest/v1/syncs`, {
+        method: "POST",
+        headers: this.headers({ Prefer: "resolution=merge-duplicates,return=minimal" }),
+        body: JSON.stringify([{ code, data: state, updated_at: state.updatedAt || Date.now() }]),
       });
       this.lastStatus = res.ok ? "ok" : "error";
       return res.ok;
