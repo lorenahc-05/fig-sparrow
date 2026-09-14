@@ -26,6 +26,7 @@ function loadState() {
     exerciseLogs: saved.exerciseLogs || {},
     swimIdeas: saved.swimIdeas || JSON.parse(JSON.stringify(DEFAULT_SWIM_IDEAS)),
     swimLogs: saved.swimLogs || [],
+    updatedAt: saved.updatedAt || 0,
   };
   return state;
 }
@@ -33,11 +34,17 @@ function loadState() {
 const Store = {
   state: loadState(),
 
-  save() {
+  save(fromRemote) {
+    if (!fromRemote) {
+      this.state.updatedAt = Date.now();
+    }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this.state));
     } catch (e) {
       /* almacenamiento no disponible: continuar solo en memoria */
+    }
+    if (!fromRemote && typeof Sync !== "undefined") {
+      Sync.schedulePush(this.state);
     }
   },
 

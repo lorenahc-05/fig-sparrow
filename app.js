@@ -143,6 +143,7 @@ function renderHome() {
   return `
     <div class="screen-home">
       <div class="home-hero-hint">Foto de fondo — coloca tu imagen en assets/hero.jpg</div>
+      <button class="sync-badge" data-action="open-sync">${syncBadgeLabel()}</button>
       <div class="home-content">
         <button class="home-headline" data-action="edit-headline">${escapeHtml(headline)}</button>
         <nav class="home-nav">
@@ -156,6 +157,12 @@ function renderHome() {
       </div>
     </div>
   `;
+}
+
+function syncBadgeLabel() {
+  if (typeof Sync === "undefined" || !Sync.isConfigured()) return "Sincronización";
+  if (!Sync.isEnabled()) return "Sync: off";
+  return "Sync: " + Sync.getCode();
 }
 
 function escapeHtml(s) {
@@ -871,7 +878,7 @@ function openSwimLogForm() {
           <label>Nota (opcional)</label>
           <input type="text" id="swim-note" placeholder="Ej. crol + braza" style="border-color:var(--garnet); color:var(--garnet);">
         </div>
-        <button class="btn-primary-pill" data-action="save-swim-log">Guardar</button>
+        <button class="btn-primary-pill" style="background:var(--garnet); color:var(--garnet-cream);" data-action="save-swim-log">Guardar</button>
       </div>
     </div>
   `;
@@ -899,13 +906,89 @@ function openHeadlineEditor() {
       </div>
     </div>
   `;
-  document.getElementById("headline-input").focus();
+  const ta = document.getElementById("headline-input");
+  ta.focus();
+  // permite insertar tabuladores de verdad en vez de saltar de campo
+  ta.addEventListener("keydown", (e) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const start = ta.selectionStart;
+      const end = ta.selectionEnd;
+      ta.value = ta.value.slice(0, start) + "\t" + ta.value.slice(end);
+      ta.selectionStart = ta.selectionEnd = start + 1;
+    }
+  });
 }
 
 function saveHeadline() {
   const val = document.getElementById("headline-input").value.trim();
   Store.setHeadline(val);
   closeOverlay();
+  refresh();
+}
+
+// -------- sincronización entre dispositivos --------
+
+function openSyncSheet() {
+  if (typeof Sync === "undefined" || !Sync.isConfigured()) {
+    overlayRoot.innerHTML = `
+      <div class="sheet-overlay" data-action="close-overlay">
+        <div class="sheet sheet--text" data-stop>
+          <div class="sheet-title">//Sincronización</div>
+          <div class="sync-status-line">Todavía no está configurada. Añade tus datos de Firebase en el archivo <strong>sync-config.js</strong> (las instrucciones están dentro de ese mismo archivo) y esta app sincronizará sola entre tus dispositivos.</div>
+          <button class="btn-primary-pill" style="background:var(--yellow); color:#4a4930;" data-action="close-overlay">Entendido</button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+  renderSyncSheet();
+}
+
+function renderSyncSheet() {
+  const enabled = Sync.isEnabled();
+  const code = Sync.getCode();
+  overlayRoot.innerHTML = `
+    <div class="sheet-overlay" data-action="close-overlay">
+      <div class="sheet sheet--text" data-stop>
+        <div class="sheet-title">//Sincronización entre dispositivos</div>
+
+        <div class="toggle-row">
+          <span>${enabled ? "Activada" : "Desactivada"}</span>
+          <button class="btn-primary-pill" style="width:auto; margin:0; padding:8px 16px; background:var(--yellow); color:#4a4930;" data-action="toggle-sync">${enabled ? "Apagar" : "Encender"}</button>
+        </div>
+
+        <div class="sync-code-box">
+          <div class="code">${code}</div>
+          <div class="hint">Tu código de sincronización</div>
+        </div>
+        <div class="sync-status-line">Pon este mismo código en tus otros dispositivos (botón de abajo) para que compartan los mismos datos: ideas, pesos, registros de natación y el titular de la home.</div>
+
+        <div class="field">
+          <label>Usar el código de otro dispositivo</label>
+          <input type="text" id="sync-join-input" placeholder="Ej. AB3F9K2Q" maxlength="8" style="text-transform:uppercase;">
+        </div>
+        <button class="btn-primary-pill" style="background:var(--yellow); color:#4a4930;" data-action="join-sync">Unirme a ese código</button>
+      </div>
+    </div>
+  `;
+}
+
+async function toggleSyncEnabled() {
+  Sync.setEnabled(!Sync.isEnabled());
+  if (Sync.isEnabled()) {
+    await Sync.syncOnLoad();
+  }
+  renderSyncSheet();
+  refresh();
+}
+
+async function joinSyncCode() {
+  const input = document.getElementById("sync-join-input");
+  const code = input.value.trim();
+  if (!code) return;
+  await Sync.joinCode(code);
+  renderSyncSheet();
   refresh();
 }
 
@@ -930,6 +1013,15 @@ document.addEventListener("click", (e) => {
       break;
     case "edit-headline":
       openHeadlineEditor();
+      break;
+    case "open-sync":
+      openSyncSheet();
+      break;
+    case "toggle-sync":
+      toggleSyncEnabled();
+      break;
+    case "join-sync":
+      joinSyncCode();
       break;
     case "save-headline":
       saveHeadline();
@@ -1052,3 +1144,19 @@ document.documentElement.classList.add("no-hero");
 
 // arranque
 render();
+
+// sincronización: al abrir la app, si hay una versión más nueva en otro
+// dispositivo, la adoptamos y refrescamos la pantalla
+if (typeof Sync !== "undefined") {
+  Sync.syncOnLoad().then((changed) => {
+    if (changed) refresh();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      Sync.syncOnLoad().then((changed) => {
+        if (changed) refresh();
+      });
+    }
+  });
+}
