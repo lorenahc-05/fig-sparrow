@@ -5,7 +5,6 @@
 const appEl = document.getElementById("app");
 const overlayRoot = document.getElementById("overlay-root");
 
-let timerInterval = null;
 let formState = null; // estado del formulario de idea en edición
 let keypadState = null; // estado del teclado numérico de peso
 
@@ -105,10 +104,7 @@ window.addEventListener("hashchange", render);
 window.addEventListener("DOMContentLoaded", render);
 
 function render() {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
+  clearAllRestTimers();
   overlayRoot.innerHTML = "";
   keypadState = null;
   const seg = parseHash();
@@ -126,10 +122,6 @@ function render() {
 
   appEl.innerHTML = html;
   window.scrollTo(0, 0);
-
-  if (seg[0] === "gym" && seg[1] && WORKOUTS[seg[1]] && !WORKOUTS[seg[1]].isInfo) {
-    startSessionTimer(seg[1]);
-  }
 }
 
 function refresh() {
@@ -353,7 +345,7 @@ function renderIdeaForm(mealKey, ideaId) {
         </div>
         <div style="display:flex; gap:10px;">
           <div class="field" style="flex:1"><label>Kcal</label><input type="number" inputmode="numeric" placeholder="0" value="${escapeHtml(formState.kcal)}" data-field="kcal"></div>
-          <div class="field" style="flex:1"><label>Proteína (g)</label><input type="number" inputmode="decimal" placeholder="0" value="${escapeHtml(formState.protein)}" data-field="protein"></div>
+          <div class="field" style="flex:1"><label>Proteína (g)</label><input type="text" inputmode="decimal" placeholder="0" value="${escapeHtml(formState.protein)}" data-field="protein"></div>
         </div>
         <div class="field">
           <label>Etiqueta (opcional)</label>
@@ -384,9 +376,14 @@ function renderIdeaForm(mealKey, ideaId) {
 // ================================================================
 
 function renderGym(seg) {
-  const [, sub] = seg;
+  const [, sub, sub2, sub3] = seg;
   if (!sub) return renderGymHome();
   if (sub === "historial") return renderHistorial();
+  if (sub === "natacion") {
+    if (sub2 === "nueva") return renderSwimIdeaForm(null);
+    if (sub3 === "editar") return renderSwimIdeaForm(sub2);
+    return renderNatacion();
+  }
   if (WORKOUTS[sub]) return renderWorkout(sub);
   return renderGymHome();
 }
@@ -419,8 +416,8 @@ function renderGymHome() {
 
 function workoutRow(id, small) {
   const w = WORKOUTS[id];
-  const recent = !w.isInfo ? lastSessionLabel(id) : null;
-  const sub = w.isInfo ? w.subtitle : recent ? `${w.subtitle.split("·")[0].trim() || w.subtitle} · ${recent}` : w.subtitle;
+  const recent = lastSessionLabel(id);
+  const sub = recent ? `${w.subtitle.split("·")[0].trim() || w.subtitle} · ${recent}` : w.subtitle;
   return `
     <button class="workout-row ${small ? "small" : ""}" data-action="nav" data-href="#/gym/${id}">
       <div>
@@ -432,25 +429,44 @@ function workoutRow(id, small) {
   `;
 }
 
+function parseRestSeconds(restStr) {
+  const n = parseInt(restStr, 10);
+  return Number.isNaN(n) ? 60 : n;
+}
+
+function formatRestLabel(seconds) {
+  return `${seconds} S`;
+}
+
+function formatRestRemaining(seconds) {
+  if (seconds >= 60) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
+  return `${seconds} S`;
+}
+
+function restChip(slug, restStr) {
+  const seconds = parseRestSeconds(restStr);
+  const label = formatRestLabel(seconds);
+  const active = restTimers[slug];
+  let text = label;
+  let cls = "";
+  if (active) {
+    if (active.done) {
+      text = "¡Listo!";
+      cls = "is-done";
+    } else {
+      text = formatRestRemaining(active.remaining);
+      cls = "is-running";
+    }
+  }
+  return `<button class="rest-chip ${cls}" data-action="toggle-rest" data-slug="${slug}" data-rest-seconds="${seconds}" data-rest-label="${label}">${text}</button>`;
+}
+
 function renderWorkout(id) {
   const w = WORKOUTS[id];
-
-  if (w.isInfo) {
-    return `
-      <div class="screen screen--gym">
-        <div class="topbar"><button data-action="nav" data-href="#/gym">← Entrenos</button><span></span></div>
-        <div class="content">
-          <div class="h1">${w.name}</div>
-          <div class="meta-row"><span>//${w.subtitle}</span></div>
-          <div class="empty-state" style="text-align:left; border-style:solid;">${w.infoText}</div>
-        </div>
-        ${tabbar("gym")}
-      </div>
-    `;
-  }
-
-  const session = Store.getActiveSession(id);
-  const elapsedMs = Date.now() - session.startedAt;
 
   const exCards = w.exercises
     .map((exItem) => {
@@ -459,41 +475,26 @@ function renderWorkout(id) {
 
       if (!exItem.trackWeight) {
         return `
-          <div class="exercise-card no-weight">
-            <div class="ex-name">${def.name}</div>
-            <div class="ex-scheme">${exItem.sets}×${exItem.reps}</div>
+          <div class="exercise-card no-weight-card">
+            <div class="ex-head">
+              <div class="ex-name">${def.name}</div>
+              <div class="ex-scheme">${exItem.sets}×${exItem.reps}</div>
+            </div>
+            <div class="ex-actions">
+              <span></span>
+              ${restChip(exItem.slug, exItem.rest)}
+            </div>
           </div>
         `;
       }
 
       const log = Store.getLog(exItem.slug);
-      const entries = (session.entries[exItem.slug] || []);
-      const boxes = [];
-      for (let s = 0; s < exItem.sets; s++) {
-        const saved = entries[s];
-        if (saved) {
-          boxes.push(`
-            <div class="set-box is-filled" data-action="open-set" data-workout="${id}" data-slug="${exItem.slug}" data-set="${s}">
-              <div class="w">${fmtNum(saved.weight)}</div>
-              <div class="r">${saved.reps} REPS</div>
-            </div>
-          `);
-        } else if (log.lastWeight !== null && log.lastWeight !== undefined) {
-          boxes.push(`
-            <div class="set-box is-empty" data-action="open-set" data-workout="${id}" data-slug="${exItem.slug}" data-set="${s}">
-              <div class="w">${fmtNum(log.lastWeight)}</div>
-              <div class="r">ÚLTIMO</div>
-            </div>
-          `);
-        } else {
-          boxes.push(`
-            <div class="set-box is-empty" data-action="open-set" data-workout="${id}" data-slug="${exItem.slug}" data-set="${s}">
-              <div class="w">—</div>
-              <div class="r">SERIE ${s + 1}</div>
-            </div>
-          `);
-        }
-      }
+      const hasLog = log.lastWeight !== null && log.lastWeight !== undefined;
+      const lastLine = hasLog
+        ? `Último: <strong>${fmtNum(log.lastWeight)} kg</strong> · ${log.lastReps} reps`
+        : "Sin registros todavía";
+      const history = (log.history || []).slice(-4).map((h) => fmtNum(h.weight));
+      const historyLine = history.length > 1 ? history.join(" → ") : "";
 
       return `
         <div class="exercise-card">
@@ -501,7 +502,12 @@ function renderWorkout(id) {
             <div class="ex-name">${def.name}</div>
             <div class="ex-scheme">${scheme}</div>
           </div>
-          <div class="set-grid" style="grid-template-columns:repeat(${exItem.sets},1fr)">${boxes.join("")}</div>
+          <div class="ex-last">${lastLine}</div>
+          ${historyLine ? `<div class="ex-history">${historyLine}</div>` : ""}
+          <div class="ex-actions">
+            <button class="weight-btn" data-action="add-weight" data-slug="${exItem.slug}">+ Añadir peso</button>
+            ${restChip(exItem.slug, exItem.rest)}
+          </div>
         </div>
       `;
     })
@@ -511,7 +517,7 @@ function renderWorkout(id) {
     <div class="screen screen--gym">
       <div class="topbar">
         <button data-action="nav" data-href="#/gym">← Entrenos</button>
-        <span class="session-timer" data-timer-display>${formatElapsed(elapsedMs)}</span>
+        <span></span>
       </div>
       <div class="content">
         <div class="h1" style="font-size:38px;">${w.name}</div>
@@ -519,31 +525,60 @@ function renderWorkout(id) {
         <div class="exercise-list">${exCards}</div>
         ${w.note ? `<div class="note-block" style="opacity:0.85;">${w.note}</div>` : ""}
       </div>
-      <div class="session-footer">
-        <button class="btn-finish" data-action="finish-session" data-workout="${id}">Terminar sesión</button>
-      </div>
       ${tabbar("gym")}
     </div>
   `;
 }
 
-function formatElapsed(ms) {
-  const totalSec = Math.max(0, Math.floor(ms / 1000));
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+// -------- temporizador de descanso real, por ejercicio --------
+
+let restTimers = {}; // slug -> { remaining, id, done }
+
+function clearAllRestTimers() {
+  Object.values(restTimers).forEach((t) => t.id && clearInterval(t.id));
+  restTimers = {};
 }
 
-function startSessionTimer(id) {
-  timerInterval = setInterval(() => {
-    const session = Store.state.activeSessions[id];
-    const el = document.querySelector("[data-timer-display]");
-    if (!session || !el) {
-      clearInterval(timerInterval);
+function toggleRestTimer(slug, totalSeconds) {
+  if (restTimers[slug] && restTimers[slug].id) clearInterval(restTimers[slug].id);
+  restTimers[slug] = { remaining: totalSeconds, done: false, id: null };
+  updateRestTimerDOM(slug);
+  restTimers[slug].id = setInterval(() => {
+    const t = restTimers[slug];
+    if (!t) return;
+    t.remaining--;
+    if (t.remaining <= 0) {
+      clearInterval(t.id);
+      t.id = null;
+      t.done = true;
+      updateRestTimerDOM(slug);
+      setTimeout(() => {
+        delete restTimers[slug];
+        updateRestTimerDOM(slug);
+      }, 1600);
       return;
     }
-    el.textContent = formatElapsed(Date.now() - session.startedAt);
+    updateRestTimerDOM(slug);
   }, 1000);
+}
+
+function updateRestTimerDOM(slug) {
+  const el = document.querySelector(`[data-action="toggle-rest"][data-slug="${slug}"]`);
+  if (!el) return;
+  const t = restTimers[slug];
+  if (!t) {
+    el.textContent = el.dataset.restLabel;
+    el.classList.remove("is-running", "is-done");
+    return;
+  }
+  if (t.done) {
+    el.textContent = "¡Listo!";
+    el.classList.add("is-done");
+    el.classList.remove("is-running");
+    return;
+  }
+  el.textContent = formatRestRemaining(t.remaining);
+  el.classList.add("is-running");
 }
 
 function renderHistorial() {
@@ -559,7 +594,7 @@ function renderHistorial() {
           const log = Store.getLog(slug);
           const evolution = log.history
             .slice(-5)
-            .map((h) => fmtNum(h.sets[h.sets.length - 1].weight))
+            .map((h) => fmtNum(h.weight))
             .join(" → ");
           return `
             <div class="history-row">
@@ -572,7 +607,7 @@ function renderHistorial() {
           `;
         })
         .join("")
-    : `<div class="empty-state" style="text-align:left; border-style:solid;">Todavía no has registrado ningún peso. En cuanto guardes una serie, aparecerá aquí su evolución.</div>`;
+    : `<div class="empty-state" style="text-align:left; border-style:solid;">Todavía no has registrado ningún peso. En cuanto guardes uno, aparecerá aquí su evolución.</div>`;
 
   return `
     <div class="screen screen--gym">
@@ -588,6 +623,97 @@ function renderHistorial() {
 }
 
 // ================================================================
+// NATACIÓN — entrenos posibles + registros, dentro de su propia pantalla
+// ================================================================
+
+function renderNatacion() {
+  const ideas = Store.getSwimIdeas();
+  const logs = Store.getSwimLogs();
+
+  const ideaCards = ideas.length
+    ? `<div class="card-stack">${ideas
+        .map(
+          (idea) => `
+        <button class="idea-card" data-action="nav" data-href="#/gym/natacion/${idea.id}/editar" style="border-color:var(--garnet); color:var(--garnet);">
+          <div class="row-top"><div class="title">${escapeHtml(idea.name)}</div></div>
+          ${idea.detail ? `<div class="ingredients" style="color:var(--garnet); opacity:0.8;">${escapeHtml(idea.detail)}</div>` : ""}
+          <div class="row-bottom"><span></span><span>EDITAR →</span></div>
+        </button>
+      `
+        )
+        .join("")}</div>`
+    : `<div class="empty-state" style="text-align:left; border-style:solid;">Todavía no hay entrenos de natación guardados.</div>`;
+
+  const logRows = logs.length
+    ? logs
+        .map(
+          (l) => `
+        <div class="history-row">
+          <div class="top">
+            <div class="name">${daysAgoLabel(l.date)}</div>
+            <button class="icon-btn" style="border-color:var(--garnet); color:var(--garnet); width:30px; height:30px; font-size:14px; flex:0 0 30px;" data-action="delete-swim-log" data-id="${l.id}">×</button>
+          </div>
+          <div class="evolution">${l.distance ? fmtNum(l.distance) + " km" : ""}${l.distance && l.duration ? " · " : ""}${l.duration ? l.duration + " min" : ""}${l.note ? " · " + escapeHtml(l.note) : ""}</div>
+        </div>
+      `
+        )
+        .join("")
+    : `<div class="empty-state" style="text-align:left; border-style:solid;">Todavía no hay registros. Añade uno cuando termines de nadar.</div>`;
+
+  return `
+    <div class="screen screen--gym">
+      <div class="topbar"><button data-action="nav" data-href="#/gym">← Entrenos</button><span></span></div>
+      <div class="content">
+        <div class="h1">Natación</div>
+        <div class="meta-row"><span>//${WORKOUTS.natacion.subtitle}</span></div>
+
+        <div class="group-label" style="margin-top:8px;">Entrenos posibles</div>
+        ${ideaCards}
+        <button class="btn-add-line" style="border-color:var(--garnet-line); color:var(--garnet); margin-top:10px;" data-action="nav" data-href="#/gym/natacion/nueva">+ Añadir entreno</button>
+
+        <div class="group-label" style="margin-top:26px;">Registros</div>
+        <div>${logRows}</div>
+        <button class="btn-primary-pill" data-action="add-swim-log">+ Añadir registro</button>
+      </div>
+      ${tabbar("gym")}
+    </div>
+  `;
+}
+
+function renderSwimIdeaForm(id) {
+  const isNew = !id;
+  if (!formState || formState._swim !== true || formState._swimId !== id) {
+    const existing = isNew ? null : Store.getSwimIdea(id);
+    formState = existing ? JSON.parse(JSON.stringify(existing)) : { id: null, name: "", detail: "" };
+    formState._swim = true;
+    formState._swimId = id;
+  }
+
+  return `
+    <div class="screen screen--gym">
+      <div class="topbar">
+        <button data-action="nav" data-href="#/gym/natacion">← Natación</button>
+        <span></span>
+      </div>
+      <div class="content">
+        <div class="h1" style="font-size:32px; margin-bottom:18px;">${isNew ? "Nuevo entreno" : "Editar entreno"}</div>
+        <div class="field">
+          <label>Nombre</label>
+          <input type="text" placeholder="Ej. Series 4×50 m" value="${escapeHtml(formState.name)}" data-field="name" style="border-color:var(--garnet); color:var(--garnet);">
+        </div>
+        <div class="field">
+          <label>Detalle</label>
+          <textarea placeholder="Describe el entreno…" data-field="detail" style="border-color:var(--garnet); color:var(--garnet);">${escapeHtml(formState.detail || "")}</textarea>
+        </div>
+        <button class="btn-primary-pill" data-action="save-swim-idea">Guardar</button>
+        ${!isNew ? `<button class="btn-text-danger" style="color:var(--garnet);" data-action="delete-swim-idea" data-id="${id}">Eliminar entreno</button>` : ""}
+      </div>
+      ${tabbar("gym")}
+    </div>
+  `;
+}
+
+// ================================================================
 // OVERLAYS: teclado numérico de peso + edición de titular
 // ================================================================
 
@@ -596,26 +722,29 @@ function closeOverlay() {
   keypadState = null;
 }
 
-function openSetKeypad(workoutId, slug, setIndex) {
-  const w = WORKOUTS[workoutId];
-  const exItem = w.exercises.find((e) => e.slug === slug);
+function findExerciseItem(slug) {
+  for (const id in WORKOUTS) {
+    const w = WORKOUTS[id];
+    if (!w.exercises) continue;
+    const found = w.exercises.find((e) => e.slug === slug);
+    if (found) return found;
+  }
+  return null;
+}
+
+function openWeightKeypad(slug) {
+  const exItem = findExerciseItem(slug);
   const def = EXERCISES[slug];
   const log = Store.getLog(slug);
-  const session = Store.getActiveSession(workoutId);
-  const saved = (session.entries[slug] || [])[setIndex];
-
-  const defaultReps = saved ? saved.reps : log.lastReps !== null && log.lastReps !== undefined ? log.lastReps : parseInt(exItem.reps, 10) || 10;
+  const defaultReps = log.lastReps !== null && log.lastReps !== undefined ? log.lastReps : parseInt(exItem ? exItem.reps : 10, 10) || 10;
 
   keypadState = {
-    workoutId,
     slug,
-    setIndex,
-    setsCount: exItem.sets,
-    scheme: `${exItem.sets}×${exItem.reps}`,
-    rir: exItem.rir,
+    scheme: exItem ? `${exItem.sets}×${exItem.reps}` : "",
+    rir: exItem ? exItem.rir : "—",
     exName: def.name,
     lastWeight: log.lastWeight,
-    value: saved ? fmtNum(saved.weight) : "",
+    value: "",
     reps: defaultReps,
   };
   renderKeypad();
@@ -638,7 +767,7 @@ function renderKeypad() {
       <div class="sheet" data-stop>
         <div class="sheet-head">
           <div class="name">${k.exName}</div>
-          <div class="scheme">Serie ${k.setIndex + 1} · ${k.rir !== "—" ? "RIR " + k.rir + " · " : ""}${k.scheme.split("×")[1] || ""}</div>
+          <div class="scheme">${k.rir !== "—" ? "RIR " + k.rir + " · " : ""}${(k.scheme.split("×")[1] || "").trim()}</div>
         </div>
         <div class="weight-display">
           <div class="num">${display}</div>
@@ -718,10 +847,44 @@ function kpSave() {
   const k = keypadState;
   let weight = k.value !== "" ? parseNum(k.value) : k.lastWeight;
   if (weight === null || weight === undefined) weight = 0;
-  Store.saveSet(k.workoutId, k.slug, k.setIndex, weight, k.reps);
+  Store.logWeight(k.slug, weight, k.reps);
   closeOverlay();
   refresh();
-  startSessionTimer(k.workoutId);
+}
+
+// -------- registro de natación (sheet simple) --------
+
+function openSwimLogForm() {
+  overlayRoot.innerHTML = `
+    <div class="sheet-overlay" data-action="close-overlay">
+      <div class="sheet sheet--text" data-stop style="color:var(--garnet); background:var(--oliva-gym);">
+        <div class="sheet-title">//Nuevo registro de natación</div>
+        <div class="field" style="margin-top:14px;">
+          <label>Distancia (km)</label>
+          <input type="text" inputmode="decimal" id="swim-distance" placeholder="1,3" style="border-color:var(--garnet); color:var(--garnet);">
+        </div>
+        <div class="field">
+          <label>Duración (min)</label>
+          <input type="number" inputmode="numeric" id="swim-duration" placeholder="50" style="border-color:var(--garnet); color:var(--garnet);">
+        </div>
+        <div class="field">
+          <label>Nota (opcional)</label>
+          <input type="text" id="swim-note" placeholder="Ej. crol + braza" style="border-color:var(--garnet); color:var(--garnet);">
+        </div>
+        <button class="btn-primary-pill" data-action="save-swim-log">Guardar</button>
+      </div>
+    </div>
+  `;
+  document.getElementById("swim-distance").focus();
+}
+
+function saveSwimLogForm() {
+  const distance = parseNum(document.getElementById("swim-distance").value);
+  const duration = parseInt(document.getElementById("swim-duration").value, 10) || null;
+  const note = document.getElementById("swim-note").value.trim();
+  Store.addSwimLog({ distance, duration, note });
+  closeOverlay();
+  refresh();
 }
 
 // -------- editar titular de home --------
@@ -809,8 +972,11 @@ document.addEventListener("click", (e) => {
       navigate(`#/comidas/${t.dataset.meal}`);
       break;
     }
-    case "open-set":
-      openSetKeypad(t.dataset.workout, t.dataset.slug, parseInt(t.dataset.set, 10));
+    case "add-weight":
+      openWeightKeypad(t.dataset.slug);
+      break;
+    case "toggle-rest":
+      toggleRestTimer(t.dataset.slug, parseInt(t.dataset.restSeconds, 10));
       break;
     case "kp-digit":
       kpAppendDigit(t.dataset.digit);
@@ -827,9 +993,33 @@ document.addEventListener("click", (e) => {
     case "kp-save":
       kpSave();
       break;
-    case "finish-session":
-      Store.finishSession(t.dataset.workout);
-      navigate("#/gym");
+    case "add-swim-log":
+      openSwimLogForm();
+      break;
+    case "delete-swim-log":
+      Store.deleteSwimLog(t.dataset.id);
+      refresh();
+      break;
+    case "save-swim-idea": {
+      const list = Store.getSwimIdeas();
+      const ids = list.map((i) => i.id);
+      const idea = {
+        id: formState.id || newId(ids, formState.name || "entreno"),
+        name: formState.name || "Entreno sin nombre",
+        detail: formState.detail || "",
+      };
+      Store.saveSwimIdea(idea);
+      formState = null;
+      navigate("#/gym/natacion");
+      break;
+    }
+    case "delete-swim-idea":
+      Store.deleteSwimIdea(t.dataset.id);
+      formState = null;
+      navigate("#/gym/natacion");
+      break;
+    case "save-swim-log":
+      saveSwimLogForm();
       break;
     default:
       break;

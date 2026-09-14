@@ -24,7 +24,8 @@ function loadState() {
     headline: saved.headline !== undefined ? saved.headline : "CERRAR LAS 3 SESIONES Y NADAR EL SÁBADO",
     meals: saved.meals || JSON.parse(JSON.stringify(DEFAULT_IDEAS)),
     exerciseLogs: saved.exerciseLogs || {},
-    activeSessions: saved.activeSessions || {},
+    swimIdeas: saved.swimIdeas || JSON.parse(JSON.stringify(DEFAULT_SWIM_IDEAS)),
+    swimLogs: saved.swimLogs || [],
   };
   return state;
 }
@@ -66,54 +67,64 @@ const Store = {
     this.save();
   },
 
-  // ---------- Gym: logs de ejercicio ----------
+  // ---------- Gym: logs de ejercicio (registro directo, sin sesión) ----------
   getLog(slug) {
     return this.state.exerciseLogs[slug] || { lastWeight: null, lastReps: null, history: [] };
   },
 
-  // ---------- Gym: sesión activa ----------
-  getActiveSession(workoutId) {
-    let s = this.state.activeSessions[workoutId];
-    if (!s) {
-      s = { startedAt: Date.now(), entries: {} };
-      this.state.activeSessions[workoutId] = s;
-      this.save();
-    }
-    return s;
-  },
-
-  saveSet(workoutId, slug, setIndex, weight, reps) {
-    const session = this.getActiveSession(workoutId);
-    if (!session.entries[slug]) session.entries[slug] = [];
-    session.entries[slug][setIndex] = { weight, reps };
-    this.save();
-  },
-
-  finishSession(workoutId) {
-    const session = this.state.activeSessions[workoutId];
-    if (!session) return;
+  logWeight(slug, weight, reps) {
     const today = new Date().toISOString().slice(0, 10);
-
-    Object.keys(session.entries).forEach((slug) => {
-      const sets = (session.entries[slug] || []).filter(Boolean);
-      if (!sets.length) return;
-      const log = this.state.exerciseLogs[slug] || { lastWeight: null, lastReps: null, history: [] };
-      const last = sets[sets.length - 1];
-      log.lastWeight = last.weight;
-      log.lastReps = last.reps;
-      log.history = log.history || [];
-      log.history.push({ date: today, sets });
-      // conservar como máximo las últimas 20 sesiones por ejercicio
-      if (log.history.length > 20) log.history = log.history.slice(-20);
-      this.state.exerciseLogs[slug] = log;
-    });
-
-    delete this.state.activeSessions[workoutId];
+    const log = this.state.exerciseLogs[slug] || { lastWeight: null, lastReps: null, history: [] };
+    log.history = log.history || [];
+    log.history.push({ date: today, weight, reps });
+    if (log.history.length > 30) log.history = log.history.slice(-30);
+    log.lastWeight = weight;
+    log.lastReps = reps;
+    this.state.exerciseLogs[slug] = log;
     this.save();
   },
 
-  discardSession(workoutId) {
-    delete this.state.activeSessions[workoutId];
+  deleteLastEntry(slug) {
+    const log = this.state.exerciseLogs[slug];
+    if (!log || !log.history.length) return;
+    log.history.pop();
+    const last = log.history[log.history.length - 1];
+    log.lastWeight = last ? last.weight : null;
+    log.lastReps = last ? last.reps : null;
+    this.save();
+  },
+
+  // ---------- Natación: entrenos posibles ----------
+  getSwimIdeas() {
+    return this.state.swimIdeas || [];
+  },
+  getSwimIdea(id) {
+    return this.getSwimIdeas().find((i) => i.id === id);
+  },
+  saveSwimIdea(idea) {
+    const list = this.state.swimIdeas || (this.state.swimIdeas = []);
+    const idx = list.findIndex((i) => i.id === idea.id);
+    if (idx >= 0) list[idx] = idea;
+    else list.push(idea);
+    this.save();
+  },
+  deleteSwimIdea(id) {
+    this.state.swimIdeas = (this.state.swimIdeas || []).filter((i) => i.id !== id);
+    this.save();
+  },
+
+  // ---------- Natación: registros ----------
+  getSwimLogs() {
+    return (this.state.swimLogs || []).slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+  },
+  addSwimLog(entry) {
+    const today = new Date().toISOString().slice(0, 10);
+    const list = this.state.swimLogs || (this.state.swimLogs = []);
+    list.push(Object.assign({ id: "swim_" + Date.now().toString(36), date: today }, entry));
+    this.save();
+  },
+  deleteSwimLog(id) {
+    this.state.swimLogs = (this.state.swimLogs || []).filter((l) => l.id !== id);
     this.save();
   },
 };

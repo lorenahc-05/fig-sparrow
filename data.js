@@ -182,9 +182,7 @@ const WORKOUTS = {
     id: "natacion",
     group: "base",
     name: "Natación",
-    subtitle: "1x semana · 50 min · 1,3 km",
-    isInfo: true,
-    infoText: "Técnica alternando crol, braza y espalda, ~50 min, ~1,3 km. No se trata como cardio adicional de alta intensidad: se mantiene como trabajo de técnica y actividad de base.",
+    subtitle: "1x semana · 50 min aprox.",
   },
   "full-body-a": {
     id: "full-body-a",
@@ -222,3 +220,15 @@ const WORKOUT_ORDER_EXT = ["full-body-a", "full-body-b"];
 
 const PROGRESSION_NOTE =
   "Progresión doble: al llegar al límite superior del rango de reps en todas las series con el RIR objetivo y buena técnica, sube la carga y vuelve al límite inferior del rango.";
+
+// ============================================================
+// NATACIÓN — entrenos posibles (editable) + registros (log)
+// ============================================================
+
+const DEFAULT_SWIM_IDEAS = [
+  {
+    id: "tecnica-mixta",
+    name: "Técnica mixta",
+    detail: "Alternar crol, braza y espalda, ~50 min, ~1,3 km. Trabajo de técnica y actividad de base, no se trata como cardio de alta intensidad.",
+  },
+];

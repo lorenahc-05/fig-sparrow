@@ -260,28 +260,29 @@ a, .link { color: inherit; text-decoration: none; }
   font-weight: 700;
   letter-spacing: 0.1em;
   margin-bottom: 6px;
-  color: var(--yellow-soft);
+  color: inherit;
+  opacity: 0.75;
 }
 .field input, .field textarea {
   width: 100%;
   background: none;
-  border: var(--border-w) solid var(--yellow);
-  color: var(--yellow);
+  border: var(--border-w) solid currentColor;
+  color: inherit;
   padding: 11px 12px;
   font-size: 15px;
   font-weight: 700;
   font-family: inherit;
 }
 .field textarea { resize: vertical; min-height: 64px; font-weight: 500; font-size: 13px; }
-.field input::placeholder, .field textarea::placeholder { color: var(--yellow-line); }
+.field input::placeholder, .field textarea::placeholder { color: currentColor; opacity: 0.45; }
 
 .ingredient-edit-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
 .ingredient-edit-row input { flex: 1; }
 .ingredient-edit-row input.amt-input { flex: 0 0 34%; }
 .icon-btn {
-  border: var(--border-w) solid var(--yellow);
+  border: var(--border-w) solid currentColor;
   background: none;
-  color: var(--yellow);
+  color: inherit;
   width: 40px;
   height: 40px;
   font-size: 18px;
@@ -291,9 +292,10 @@ a, .link { color: inherit; text-decoration: none; }
 }
 
 .btn-add-line {
-  border: var(--border-w) dashed var(--yellow-line);
+  border: var(--border-w) dashed currentColor;
   background: none;
-  color: var(--yellow-soft);
+  color: inherit;
+  opacity: 0.85;
   padding: 10px;
   font-size: 12px;
   font-weight: 700;
@@ -358,19 +360,9 @@ a, .link { color: inherit; text-decoration: none; }
 
 /* ---------- gym: sesión ---------- */
 
-.session-timer {
-  background: var(--garnet);
-  color: var(--garnet-cream);
-  padding: 5px 11px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-}
-
 .warmup-line { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; margin: 10px 0 18px; }
 
-.exercise-list { display: flex; flex-direction: column; gap: 9px; padding-bottom: 8px; }
+.exercise-list { display: flex; flex-direction: column; gap: 9px; padding-bottom: 20px; }
 
 .exercise-card { border: var(--border-w) solid var(--garnet); padding: 12px; }
 .exercise-card .ex-head {
@@ -378,47 +370,52 @@ a, .link { color: inherit; text-decoration: none; }
   justify-content: space-between;
   align-items: baseline;
   gap: 8px;
-  margin-bottom: 9px;
+  margin-bottom: 6px;
 }
 .exercise-card .ex-name { font-size: 15px; font-weight: 800; text-transform: uppercase; line-height: 1.1; }
 .exercise-card .ex-scheme { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; white-space: nowrap; }
 
-.set-grid { display: grid; gap: 6px; }
+.ex-last { font-size: 13px; font-weight: 600; }
+.ex-last strong { font-weight: 800; }
+.ex-history { font-size: 11px; font-weight: 600; opacity: 0.7; margin-top: 3px; letter-spacing: 0.02em; }
 
-.set-box {
-  text-align: center;
-  padding: 8px 4px;
-  border: var(--border-w) solid var(--garnet);
-  cursor: pointer;
-}
-.set-box .w { font-size: 19px; font-weight: 800; }
-.set-box .r { font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; }
-
-.set-box.is-empty { border-style: dashed; border-color: var(--garnet-line); opacity: 0.6; }
-.set-box.is-empty .w { opacity: 0.6; }
-.set-box.is-filled { background: var(--garnet); color: var(--garnet-cream); border-color: var(--garnet); }
-
-.exercise-card.no-weight { display: flex; justify-content: space-between; align-items: baseline; }
-.exercise-card.no-weight .ex-name { margin: 0; }
-
-.session-footer {
-  padding: 14px 22px max(20px, env(safe-area-inset-bottom));
+.ex-actions {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
+  margin-top: 10px;
 }
-.session-footer .btn-finish {
+
+.weight-btn {
   flex: 1;
-  background: var(--garnet);
-  color: var(--garnet-cream);
-  border: none;
-  border-radius: 999px;
-  text-align: center;
-  padding: 15px;
-  font-size: 12.5px;
+  border: var(--border-w) solid var(--garnet);
+  background: none;
+  color: var(--garnet);
+  padding: 10px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
   cursor: pointer;
 }
+
+.rest-chip {
+  flex: 0 0 72px;
+  text-align: center;
+  border: var(--border-w) solid var(--garnet);
+  background: none;
+  color: var(--garnet);
+  padding: 10px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.rest-chip.is-running { background: var(--garnet); color: var(--garnet-cream); }
+.rest-chip.is-done { background: var(--yellow); color: #4a4930; border-color: var(--yellow); }
+
+.exercise-card.no-weight-card .ex-head { margin-bottom: 0; }
+.exercise-card.no-weight-card .ex-actions { margin-top: 10px; }
 
 /* ---------- historial ---------- */
 
@@ -562,9 +559,7 @@ a, .link { color: inherit; text-decoration: none; }
   flex-direction: column;
   justify-content: flex-end;
   background-color: #57573f;
-  background-image:
-    linear-gradient(180deg, rgba(10,10,6,0) 35%, rgba(10,10,6,0.72) 100%),
-    var(--hero-image, linear-gradient(160deg, #6b6a4a 0%, #4c4b35 55%, #35341f 100%));
+  background-image: var(--hero-image, linear-gradient(160deg, #6b6a4a 0%, #4c4b35 55%, #35341f 100%));
   background-size: cover;
   background-position: center;
 }
@@ -602,6 +597,7 @@ html.no-hero .home-hero-hint { display: block; }
   padding: 0;
   cursor: pointer;
   width: 100%;
+  text-shadow: 0 1px 10px rgba(0,0,0,0.55);
 }
 
 .home-nav { margin-top: 18px; border-top: var(--border-w) solid var(--yellow); }
@@ -619,7 +615,7 @@ html.no-hero .home-hero-hint { display: block; }
   text-align: left;
 }
 .home-nav-row:last-child { border-bottom: none; }
-.home-nav-row .label { font-size: 26px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.01em; }
+.home-nav-row .label { font-size: 26px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.01em; text-shadow: 0 1px 10px rgba(0,0,0,0.55); }
 .home-nav-row .arrow { font-size: 16px; font-weight: 700; }
 .home-nav-row.comida { color: var(--yellow); }
 .home-nav-row.gym { color: var(--garnet); }
