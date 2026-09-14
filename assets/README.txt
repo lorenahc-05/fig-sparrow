@@ -17,17 +17,35 @@ assets/         pon aquí tu foto de fondo, ver abajo
 ## Poner tu foto de fondo
 
 La pantalla de inicio (antes de entrar en Comidas o Gym) usa una foto a
-pantalla completa. Para añadirla:
+pantalla completa. Puedes poner una sola o varias — si pones varias, la
+app las va alternando sola, una distinta cada vez que entras en la Home.
 
-1. Guarda tu imagen como `hero.jpg` (formato JPG).
-2. Colócala en la carpeta `assets/`, sustituyendo el archivo de ejemplo.
-3. Recarga la app — se detecta sola, no hay que tocar código.
+1. Guarda tus imágenes en formato JPG, nombradas `hero1.jpg`,
+   `hero2.jpg`, `hero3.jpg`... (hasta `hero12.jpg`). Si solo quieres una
+   foto fija, también vale el nombre antiguo `hero.jpg`.
+2. Colócalas en la carpeta `assets/`.
+3. Recarga la app — se detectan solas, no hay que tocar código.
 
-Si no hay ninguna foto en `assets/hero.jpg`, se ve un degradado oliva de
-aviso con el texto "Foto de fondo" para que sepas dónde va.
+Si no hay ninguna foto en `assets/`, se ve un degradado oliva de aviso
+con el texto "Fotos de fondo" para que sepas dónde van.
 
 La pantalla "Reparto del día" (dentro de Comidas) y el resto de pantallas
 usan fondo oliva liso, sin foto — eso no cambia.
+
+## Instalarla en el móvil como app (PWA)
+
+La app ya está configurada como PWA instalable: icono propio, arranca a
+pantalla completa (sin barra del navegador) y sigue funcionando sin
+conexión gracias a un service worker.
+
+- **Android / Chrome**: abre la web → menú (⋮) → "Instalar app" o
+  "Añadir a pantalla de inicio".
+- **iPhone / Safari**: abre la web → botón de compartir (□↑) → "Añadir
+  a pantalla de inicio".
+
+El icono que verás en el launcher sale de `assets/icons/` (ya generado
+a partir de tu foto). Si quieres cambiarlo, sustituye esos PNG por
+otros del mismo nombre y tamaño.
 
 ## Probar en local
 

@@ -140,9 +140,11 @@ function refresh() {
 
 function renderHome() {
   const headline = Store.state.headline || "TOCA PARA ESCRIBIR TU OBJETIVO";
+  const hero = nextHeroImage();
+  const heroStyle = hero ? ` style="background-image:url('${hero}')"` : "";
   return `
-    <div class="screen-home">
-      <div class="home-hero-hint">Foto de fondo — coloca tu imagen en assets/hero.jpg</div>
+    <div class="screen-home"${heroStyle}>
+      <div class="home-hero-hint">Fotos de fondo — coloca una o varias en assets/ (hero1.jpg, hero2.jpg…) y se irán alternando solas</div>
       <button class="sync-badge" data-action="open-sync">${syncBadgeLabel()}</button>
       <div class="home-content">
         <button class="home-headline" data-action="edit-headline">${escapeHtml(headline)}</button>
@@ -1130,17 +1132,58 @@ document.addEventListener("input", (e) => {
   }
 });
 
-// foto de fondo de la Home: si existe assets/hero.jpg, se usa automáticamente
+// -------- fotos de fondo de la Home: varias, alternando automáticamente --------
+// Busca assets/hero1.jpg, hero2.jpg, … (hasta 12) y también el antiguo
+// assets/hero.jpg por compatibilidad. Cada vez que se entra en la Home se
+// muestra la siguiente de la lista, en orden rotatorio.
+
+let heroImages = [];
+
+function probeImage(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(src);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+async function discoverHeroImages() {
+  const candidates = [];
+  for (let i = 1; i <= 12; i++) candidates.push(`assets/hero${i}.jpg`);
+  candidates.push("assets/hero.jpg"); // nombre antiguo, se sigue admitiendo
+  const results = await Promise.all(candidates.map(probeImage));
+  heroImages = results.filter(Boolean);
+  return heroImages;
+}
+
+function nextHeroImage() {
+  if (!heroImages.length) return null;
+  const key = "kcalgym_hero_idx";
+  let idx = parseInt(localStorage.getItem(key) || "0", 10);
+  if (Number.isNaN(idx) || idx < 0) idx = 0;
+  const src = heroImages[idx % heroImages.length];
+  idx = (idx + 1) % heroImages.length;
+  try {
+    localStorage.setItem(key, String(idx));
+  } catch (e) {
+    /* sin almacenamiento: se pierde el orden pero se sigue viendo una foto */
+  }
+  return src;
+}
+
 document.documentElement.classList.add("no-hero");
-(function loadHeroImage() {
-  const img = new Image();
-  img.onload = () => {
-    document.documentElement.style.setProperty("--hero-image", "url('assets/hero.jpg')");
-    document.documentElement.classList.remove("no-hero");
-  };
-  img.onerror = () => {}; // sin foto todavía: se queda el degradado de aviso
-  img.src = "assets/hero.jpg";
-})();
+discoverHeroImages().then((list) => {
+  if (list.length) document.documentElement.classList.remove("no-hero");
+  if (parseHash().length === 0) refresh(); // ya estamos en la Home: aplica la foto
+});
+
+// -------- service worker: instalación real como PWA a pantalla completa --------
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
 
 // arranque
 render();
