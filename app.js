@@ -484,10 +484,16 @@ function renderMenuSemanal() {
 }
 
 function renderMenuDay(mealKeys, dayIdx) {
+  let totalKcal = 0;
+  let totalProtein = 0;
   const blocks = mealKeys
     .map((mealKey) => {
       const def = MEAL_DEFS[mealKey];
       const ideas = ideasForDay(mealKey, dayIdx);
+      ideas.forEach((idea) => {
+        totalKcal += idea.kcal || 0;
+        totalProtein += idea.protein || 0;
+      });
       const cards = ideas.length
         ? ideas
             .map(
@@ -513,7 +519,14 @@ function renderMenuDay(mealKeys, dayIdx) {
     })
     .join("");
 
-  return `<div class="menu-day">${blocks}</div>`;
+  const totalBox = `
+    <div class="calc-total-box" style="margin-top:18px;">
+      <div class="calc-total-kcal">${Math.round(totalKcal)}<small> kcal</small></div>
+      <div class="calc-total-sub">//${MEAL_TOTAL_TARGET} · ${fmtNum(totalProtein)} G PROTEÍNA</div>
+    </div>
+  `;
+
+  return `<div class="menu-day">${blocks}${totalBox}</div>`;
 }
 
 function renderMenuTable(mealKeys) {
@@ -529,11 +542,20 @@ function renderMenuTable(mealKeys) {
     })
     .join("");
 
+  const totalCells = DAY_LABELS.map((_, dayIdx) => {
+    const total = mealKeys.reduce((sum, mealKey) => {
+      const idea = ideasForDay(mealKey, dayIdx)[0];
+      return sum + (idea ? idea.kcal : 0);
+    }, 0);
+    return `<td class="menu-table-total-cell">${total} kcal</td>`;
+  }).join("");
+  const totalRow = `<tr class="menu-table-total-row"><th>Total día</th>${totalCells}</tr>`;
+
   return `
     <div class="menu-table-wrap">
       <table class="menu-table">
         <thead><tr><th></th>${headerCells}</tr></thead>
-        <tbody>${rows}</tbody>
+        <tbody>${rows}${totalRow}</tbody>
       </table>
     </div>
   `;
@@ -1402,11 +1424,12 @@ function renderSyncSheet() {
           <div class="code">${code}</div>
           <div class="hint">Tu código de sincronización</div>
         </div>
+        <div class="sync-status-line sync-warning">⚠️ Apunta este código en algún sitio (Notas, por ejemplo). Si en el móvil borras el icono de la app y lo vuelves a añadir, a veces se pierden los datos guardados solo en ese aparato — con este código puedes recuperarlo todo pulsando «Unirme a ese código» de aquí abajo antes de tocar nada más.</div>
         <div class="sync-status-line">Pon este mismo código en tus otros dispositivos (botón de abajo) para que compartan los mismos datos: ideas de comidas, calculadora de kcal, pesos de gym, registros de natación y el titular de la home.</div>
 
         <div class="field">
           <label>Usar el código de otro dispositivo</label>
-          <input type="text" id="sync-join-input" placeholder="Ej. AB3F9K2Q" maxlength="8" style="text-transform:uppercase;">
+          <input type="text" id="sync-join-input" placeholder="Ej. AB3F9K2Q" maxlength="16" style="text-transform:uppercase;">
         </div>
         <button class="btn-primary-pill" style="background:var(--yellow); color:#4a4930;" data-action="join-sync">Unirme a ese código</button>
       </div>

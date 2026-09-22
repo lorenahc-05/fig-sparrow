@@ -413,6 +413,9 @@ a, .link { color: inherit; text-decoration: none; }
 .menu-table .cell-name { display: block; font-weight: 700; line-height: 1.25; }
 .menu-table .cell-kcal { display: block; opacity: 0.75; margin-top: 2px; }
 
+.menu-table-total-row th, .menu-table-total-row td { border-top: 2px solid var(--yellow); background: rgba(234, 228, 0, 0.12); font-weight: 800; }
+.menu-table-total-cell { text-align: center; white-space: nowrap; }
+
 /* ---------- calculadora de kcal ---------- */
 
 .calc-date-nav {
@@ -676,6 +679,12 @@ a, .link { color: inherit; text-decoration: none; }
   line-height: 1.5;
   margin: 12px 0 16px;
 }
+.sync-status-line.sync-warning {
+  border: 1.5px dashed var(--yellow);
+  background: rgba(234, 228, 0, 0.14);
+  padding: 10px 12px;
+  margin: 12px 0;
+}
 .sync-code-box {
   border: var(--border-w) solid currentColor;
   padding: 16px;
@@ -686,6 +695,7 @@ a, .link { color: inherit; text-decoration: none; }
   font-size: 30px;
   font-weight: 800;
   letter-spacing: 0.1em;
+  overflow-wrap: anywhere;
 }
 .sync-code-box .hint {
   font-size: 10px;
