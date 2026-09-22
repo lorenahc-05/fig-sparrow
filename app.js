@@ -797,7 +797,7 @@ function plateAddLine() {
 
 function openQuickIngredientSheet(name, grams) {
   overlayRoot.innerHTML = `
-    <div class="sheet-overlay" data-action="close-overlay">
+    <div class="sheet-overlay">
       <div class="sheet sheet--text" data-stop>
         <div class="sheet-title">//Nuevo ingrediente</div>
         <div class="field" style="margin-top:14px;">
@@ -1232,7 +1232,7 @@ function renderKeypad() {
   }
 
   overlayRoot.innerHTML = `
-    <div class="sheet-overlay" data-action="close-overlay">
+    <div class="sheet-overlay">
       <div class="sheet" data-stop>
         <div class="sheet-head">
           <div class="name">${k.exName}</div>
@@ -1325,7 +1325,7 @@ function kpSave() {
 
 function openSwimLogForm() {
   overlayRoot.innerHTML = `
-    <div class="sheet-overlay" data-action="close-overlay">
+    <div class="sheet-overlay">
       <div class="sheet sheet--text" data-stop style="color:var(--garnet); background:var(--oliva-gym);">
         <div class="sheet-title">//Nuevo registro de natación</div>
         <div class="field" style="margin-top:14px;">
@@ -1360,7 +1360,7 @@ function saveSwimLogForm() {
 
 function openHeadlineEditor() {
   overlayRoot.innerHTML = `
-    <div class="sheet-overlay" data-action="close-overlay">
+    <div class="sheet-overlay">
       <div class="sheet sheet--text" data-stop>
         <div class="sheet-title">//Objetivo de la semana</div>
         <textarea id="headline-input" maxlength="140">${escapeHtml(Store.state.headline || "")}</textarea>
@@ -1394,7 +1394,7 @@ function saveHeadline() {
 function openSyncSheet() {
   if (typeof Sync === "undefined" || !Sync.isConfigured()) {
     overlayRoot.innerHTML = `
-      <div class="sheet-overlay" data-action="close-overlay">
+      <div class="sheet-overlay">
         <div class="sheet sheet--text" data-stop>
           <div class="sheet-title">//Sincronización</div>
           <div class="sync-status-line">Todavía no está configurada. Añade tus datos de Supabase en el archivo <strong>sync-config.js</strong> (las instrucciones están dentro de ese mismo archivo) y esta app sincronizará sola entre tus dispositivos.</div>
@@ -1411,7 +1411,7 @@ function renderSyncSheet() {
   const enabled = Sync.isEnabled();
   const code = Sync.getCode();
   overlayRoot.innerHTML = `
-    <div class="sheet-overlay" data-action="close-overlay">
+    <div class="sheet-overlay">
       <div class="sheet sheet--text" data-stop>
         <div class="sheet-title">//Sincronización entre dispositivos</div>
 
@@ -1459,9 +1459,21 @@ async function joinSyncCode() {
 // EVENTOS (delegación única sobre document)
 // ================================================================
 
+// En iOS, al tocar un input dentro del sheet, el teclado provoca un reflow
+// que a veces hace que el "click" sintético llegue con el target cambiado
+// al fondo del overlay aunque el dedo tocó claramente el input. Para no
+// cerrar el panel por error, solo cuenta como "toque en el fondo" si TANTO
+// el inicio del toque (pointerdown) como el click final apuntan al fondo.
+let overlayPressStartedOnBackdrop = false;
+
+document.addEventListener("pointerdown", (e) => {
+  const overlayBg = e.target.closest(".sheet-overlay");
+  overlayPressStartedOnBackdrop = !!(overlayBg && e.target === overlayBg);
+});
+
 document.addEventListener("click", (e) => {
   const overlayBg = e.target.closest(".sheet-overlay");
-  if (overlayBg && e.target === overlayBg) {
+  if (overlayBg && e.target === overlayBg && overlayPressStartedOnBackdrop) {
     closeOverlay();
     return;
   }
