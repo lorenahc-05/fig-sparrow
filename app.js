@@ -210,6 +210,14 @@ function renderComidas(seg) {
   return renderIdeaDetail(mealKey, sub);
 }
 
+function calcBar() {
+  return `
+    <div class="calc-bar">
+      <button data-action="nav" data-href="#/comidas/calculadora">Calculadora de kcal</button>
+    </div>
+  `;
+}
+
 function renderMealHome() {
   const keys = Object.keys(MEAL_DEFS).sort((a, b) => MEAL_DEFS[a].order - MEAL_DEFS[b].order);
   const rows = keys
@@ -243,10 +251,8 @@ function renderMealHome() {
         <button class="menu-semanal-btn" data-action="nav" data-href="#/comidas/menu">
           <span>Menú semanal</span><span class="arrow">→</span>
         </button>
-        <button class="menu-semanal-btn calc-btn" data-action="nav" data-href="#/comidas/calculadora">
-          <span>Calculadora de kcal</span><span class="arrow">→</span>
-        </button>
       </div>
+      ${calcBar()}
     </div>
   `;
 }
@@ -287,6 +293,7 @@ function renderIdeasList(mealKey) {
         ${cards}
         ${note}
       </div>
+      ${calcBar()}
     </div>
   `;
 }
@@ -352,6 +359,7 @@ function renderIdeaDetail(mealKey, ideaId) {
         ${adjust}
         ${photoSection}
       </div>
+      ${calcBar()}
     </div>
   `;
 }
@@ -417,6 +425,7 @@ function renderIdeaForm(mealKey, ideaId) {
         <button class="btn-primary-pill" data-action="save-idea">Guardar</button>
         ${!isNew ? `<button class="btn-text-danger" data-action="delete-idea" data-meal="${mealKey}" data-id="${ideaId}">Eliminar idea</button>` : ""}
       </div>
+      ${calcBar()}
     </div>
   `;
 }
@@ -469,6 +478,7 @@ function renderMenuSemanal() {
         ${menuState.view === "dias" ? `<div class="day-pills">${dayPills}</div>` : ""}
         ${body}
       </div>
+      ${calcBar()}
     </div>
   `;
 }
