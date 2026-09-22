@@ -595,6 +595,7 @@ const EXERCISES = {
   "plancha":                    { name: "Plancha", detail: "", bodyweight: true },
   "hack-squat":                { name: "Hack squat", detail: "o sentadilla guiada en multipower" },
   "pull-through":                { name: "Cable pull-through", detail: "bisagra de cadera, sin carga lumbar" },
+  "rdl-mancuernas":                { name: "Peso muerto rumano con mancuernas", detail: "bisagra de cadera, espalda neutra y rango controlado — no es el peso muerto convencional" },
   "remo-maquina":                { name: "Remo en máquina", detail: "con apoyo en pecho" },
   "curl-femoral":                { name: "Curl femoral", detail: "tumbado o sentado" },
   "plancha-lateral":            { name: "Plancha lateral", detail: "", bodyweight: true },
@@ -650,7 +651,7 @@ const WORKOUTS = {
     warmup: "5 min bici + movilidad de cadera",
     note: "Sin patada de glúteo en máquina (baja conexión mente-músculo). Nunca peso muerto convencional.",
     exercises: [
-      ex("pull-through", 3, "10-12", "2-3", "90 s"),
+      ex("rdl-mancuernas", 3, "10-12", "2-3", "90 s"),
       ex("curl-femoral", 3, "10-12", "2", "75 s"),
       ex("hip-thrust-unilateral", 3, "10 / pierna", "2", "90 s"),
       ex("abductores", 3, "12-15", "2", "60 s"),
