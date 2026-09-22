@@ -93,7 +93,7 @@ a, .link { color: inherit; text-decoration: none; }
 
 .content {
   flex: 1;
-  padding: 4px 22px 24px;
+  padding: 4px 22px max(24px, env(safe-area-inset-bottom));
   overflow-y: auto;
 }
 
@@ -113,40 +113,6 @@ a, .link { color: inherit; text-decoration: none; }
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
-}
-
-/* ---------- tabbar ---------- */
-
-.tabbar {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  border-top: var(--border-w) solid var(--yellow);
-  flex-shrink: 0;
-}
-.screen--gym .tabbar { border-top-color: var(--garnet); }
-
-.tab {
-  text-align: center;
-  padding: 15px 0 max(15px, env(safe-area-inset-bottom));
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  background: none;
-  border: none;
-  color: var(--yellow-soft);
-  cursor: pointer;
-}
-.screen--gym .tab { color: var(--garnet); opacity: 0.75; }
-
-.tab.is-active {
-  font-weight: 800;
-  background: var(--yellow);
-  color: #4a4930;
-}
-.screen--gym .tab.is-active {
-  background: var(--garnet);
-  color: var(--garnet-cream);
-  opacity: 1;
 }
 
 /* ---------- reparto del día (lista de comidas) ---------- */
@@ -363,6 +329,8 @@ a, .link { color: inherit; text-decoration: none; }
 }
 .menu-semanal-btn .arrow { font-weight: 700; }
 
+.menu-semanal-btn.calc-btn { background: var(--yellow); color: #4a4930; border-color: var(--yellow); }
+
 /* ---------- menú semanal: tabla completa / día a día ---------- */
 
 .menu-view-toggle { display: flex; gap: 8px; margin: 4px 0 16px; }
@@ -425,6 +393,66 @@ a, .link { color: inherit; text-decoration: none; }
 .menu-table tbody tr:last-child td, .menu-table tbody tr:last-child th { border-bottom: none; }
 .menu-table .cell-name { display: block; font-weight: 700; line-height: 1.25; }
 .menu-table .cell-kcal { display: block; opacity: 0.75; margin-top: 2px; }
+
+/* ---------- calculadora de kcal ---------- */
+
+.calc-date-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.calc-date-nav button {
+  border: 1.5px solid var(--yellow-line);
+  background: none;
+  color: var(--yellow);
+  width: 40px;
+  height: 40px;
+  font-size: 16px;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.calc-date-nav button:disabled { opacity: 0.3; cursor: default; }
+.calc-date-label { font-size: 13px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+
+.calc-total-box { border: var(--border-w) solid var(--yellow); border-radius: 12px; padding: 16px; margin-bottom: 18px; }
+.calc-total-kcal { font-size: 40px; font-weight: 800; line-height: 1; }
+.calc-total-kcal small { font-size: 16px; font-weight: 700; }
+.calc-total-bar { height: 8px; border-radius: 999px; background: var(--yellow-line); margin: 10px 0 8px; overflow: hidden; }
+.calc-total-bar-fill { height: 100%; background: var(--yellow); border-radius: 999px; }
+.calc-total-sub { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; color: var(--yellow-soft); }
+
+.calc-entry-list { display: flex; flex-direction: column; margin-bottom: 6px; }
+.calc-entry-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-top: 1px solid var(--yellow-line);
+}
+.calc-entry-row:first-child { border-top: var(--border-w) solid var(--yellow); }
+.calc-entry-row:last-child { border-bottom: var(--border-w) solid var(--yellow); }
+.calc-entry-info .name { font-size: 14px; font-weight: 700; line-height: 1.25; }
+.calc-entry-info .sub { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; color: var(--yellow-soft); margin-top: 3px; }
+.calc-entry-right { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.calc-entry-right .kcal { font-size: 16px; font-weight: 800; }
+.calc-entry-right .icon-btn { width: 30px; height: 30px; font-size: 14px; flex: 0 0 30px; }
+
+.plate-add-row { display: flex; gap: 8px; margin-bottom: 4px; }
+.plate-add-row input {
+  background: none;
+  border: var(--border-w) solid currentColor;
+  color: inherit;
+  padding: 11px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+}
+.plate-add-row #plate-ingredient-input { flex: 1; min-width: 0; }
+.plate-add-row .plate-grams-input { flex: 0 0 64px; }
+.plate-add-row .icon-btn { flex: 0 0 44px; height: 44px; font-size: 20px; }
 
 /* ---------- gym: índice ---------- */
 

@@ -15,6 +15,20 @@ function todayDayIndex() {
 
 let menuState = { view: "dias", day: todayDayIndex() }; // estado de la pantalla "Menú semanal"
 
+function dateKeyFromDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function todayDateKey() {
+  return dateKeyFromDate(new Date());
+}
+
+let calcState = { date: todayDateKey() }; // estado de la pantalla "Calculadora de kcal" (día visible)
+let plateState = null; // estado del plato en construcción (calculadora por ingredientes)
+
 // ---------------- helpers ----------------
 
 function fmtNum(n) {
@@ -187,21 +201,13 @@ function renderComidas(seg) {
 
   if (!mealKey) return renderMealHome();
   if (mealKey === "menu") return renderMenuSemanal();
+  if (mealKey === "calculadora") return renderCalculadora(sub);
   if (!MEAL_DEFS[mealKey]) return renderMealHome();
 
   if (!sub) return renderIdeasList(mealKey);
   if (sub === "nueva") return renderIdeaForm(mealKey, null);
   if (sub2 === "editar") return renderIdeaForm(mealKey, sub);
   return renderIdeaDetail(mealKey, sub);
-}
-
-function tabbar(active) {
-  return `
-    <div class="tabbar">
-      <button class="tab ${active === "comidas" ? "is-active" : ""}" data-action="nav" data-href="#/comidas">Comidas</button>
-      <button class="tab ${active === "gym" ? "is-active" : ""}" data-action="nav" data-href="#/gym">Gym</button>
-    </div>
-  `;
 }
 
 function renderMealHome() {
@@ -237,8 +243,10 @@ function renderMealHome() {
         <button class="menu-semanal-btn" data-action="nav" data-href="#/comidas/menu">
           <span>Menú semanal</span><span class="arrow">→</span>
         </button>
+        <button class="menu-semanal-btn calc-btn" data-action="nav" data-href="#/comidas/calculadora">
+          <span>Calculadora de kcal</span><span class="arrow">→</span>
+        </button>
       </div>
-      ${tabbar("comidas")}
     </div>
   `;
 }
@@ -279,7 +287,6 @@ function renderIdeasList(mealKey) {
         ${cards}
         ${note}
       </div>
-      ${tabbar("comidas")}
     </div>
   `;
 }
@@ -345,7 +352,6 @@ function renderIdeaDetail(mealKey, ideaId) {
         ${adjust}
         ${photoSection}
       </div>
-      ${tabbar("comidas")}
     </div>
   `;
 }
@@ -411,7 +417,6 @@ function renderIdeaForm(mealKey, ideaId) {
         <button class="btn-primary-pill" data-action="save-idea">Guardar</button>
         ${!isNew ? `<button class="btn-text-danger" data-action="delete-idea" data-meal="${mealKey}" data-id="${ideaId}">Eliminar idea</button>` : ""}
       </div>
-      ${tabbar("comidas")}
     </div>
   `;
 }
@@ -464,7 +469,6 @@ function renderMenuSemanal() {
         ${menuState.view === "dias" ? `<div class="day-pills">${dayPills}</div>` : ""}
         ${body}
       </div>
-      ${tabbar("comidas")}
     </div>
   `;
 }
@@ -526,6 +530,290 @@ function renderMenuTable(mealKeys) {
 }
 
 // ================================================================
+// CALCULADORA DE KCAL
+// - "Plato del menú": suma directamente el kcal/proteína ya registrados
+//   de una receta existente.
+// - "Crear plato": se añaden ingredientes con su cantidad en gramos
+//   (de la base de ingredientes, ampliable sobre la marcha) y se suman
+//   en un plato que luego se registra en el día.
+// - Todo se guarda por día (fecha) para poder ver el histórico.
+// ================================================================
+
+function renderCalculadora(sub) {
+  if (sub === "menu") return renderCalcMenuPicker();
+  if (sub === "plato") return renderCalcPlato();
+  return renderCalcDia();
+}
+
+function formatCalcDateLabel(dateKey) {
+  if (dateKey === todayDateKey()) return "HOY";
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (dateKey === dateKeyFromDate(yesterday)) return "AYER";
+  const d = new Date(dateKey + "T00:00:00");
+  return d
+    .toLocaleDateString("es-ES", { weekday: "short", day: "numeric", month: "short" })
+    .toUpperCase()
+    .replace(".", "");
+}
+
+function renderCalcDia() {
+  const dateKey = calcState.date;
+  const entries = Store.getDayLog(dateKey);
+  const totalKcal = entries.reduce((sum, e) => sum + (e.kcal || 0), 0);
+  const totalProtein = entries.reduce((sum, e) => sum + (e.protein || 0), 0);
+  const pct = Math.max(0, Math.min(100, Math.round((totalKcal / 1800) * 100)));
+  const isToday = dateKey === todayDateKey();
+
+  const rows = entries.length
+    ? entries
+        .map(
+          (e) => `
+        <div class="calc-entry-row">
+          <div class="calc-entry-info">
+            <div class="name">${escapeHtml(e.name)}</div>
+            <div class="sub">${e.source === "menu" && MEAL_DEFS[e.mealKey] ? escapeHtml(MEAL_DEFS[e.mealKey].label) : "Plato personalizado"}${e.protein ? ` · ${fmtNum(e.protein)} g proteína` : ""}</div>
+          </div>
+          <div class="calc-entry-right">
+            <span class="kcal">${Math.round(e.kcal)}</span>
+            <button class="icon-btn" data-action="delete-day-entry" data-date="${dateKey}" data-id="${e.id}" aria-label="Eliminar">×</button>
+          </div>
+        </div>
+      `
+        )
+        .join("")
+    : `<div class="empty-state">Todavía no has registrado nada ${isToday ? "hoy" : "este día"}.</div>`;
+
+  return `
+    <div class="screen screen--comidas">
+      <div class="topbar">
+        <button data-action="nav" data-href="#/comidas">← Reparto del día</button>
+        <span></span>
+      </div>
+      <div class="content">
+        <div class="h1" style="font-size:34px;">Calculadora<br>de kcal</div>
+
+        <div class="calc-date-nav">
+          <button data-action="calc-day-shift" data-delta="-1" aria-label="Día anterior">←</button>
+          <div class="calc-date-label">${formatCalcDateLabel(dateKey)}</div>
+          <button data-action="calc-day-shift" data-delta="1" aria-label="Día siguiente" ${isToday ? "disabled" : ""}>→</button>
+        </div>
+
+        <div class="calc-total-box">
+          <div class="calc-total-kcal">${Math.round(totalKcal)}<small> kcal</small></div>
+          <div class="calc-total-bar"><div class="calc-total-bar-fill" style="width:${pct}%"></div></div>
+          <div class="calc-total-sub">//${MEAL_TOTAL_TARGET} · ${fmtNum(totalProtein)} G PROTEÍNA REGISTRADA</div>
+        </div>
+
+        <div class="calc-entry-list">${rows}</div>
+
+        <button class="btn-add-line" data-action="nav" data-href="#/comidas/calculadora/menu">+ Plato del menú</button>
+        <button class="btn-add-line" data-action="nav" data-href="#/comidas/calculadora/plato">+ Crear plato con ingredientes</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderCalcMenuPicker() {
+  const mealKeys = Object.keys(MEAL_DEFS).sort((a, b) => MEAL_DEFS[a].order - MEAL_DEFS[b].order);
+  const sections = mealKeys
+    .map((mealKey) => {
+      const def = MEAL_DEFS[mealKey];
+      const ideas = Store.getIdeas(mealKey);
+      if (!ideas.length) return "";
+      const cards = ideas
+        .map(
+          (idea) => `
+        <button class="menu-recipe-card" data-action="calc-add-menu-idea" data-meal="${mealKey}" data-id="${idea.id}">
+          <div class="row-top">
+            <div class="title">${escapeHtml(idea.name)}</div>
+            <div class="kcal">${idea.kcal}</div>
+          </div>
+          <div class="ingredients">${escapeHtml(ingredientsLine(idea.ingredients))}</div>
+        </button>
+      `
+        )
+        .join("");
+      return `
+        <div class="menu-meal-block">
+          <div class="menu-meal-label">${def.label}</div>
+          ${cards}
+        </div>
+      `;
+    })
+    .join("");
+
+  return `
+    <div class="screen screen--comidas">
+      <div class="topbar">
+        <button data-action="nav" data-href="#/comidas/calculadora">← Calculadora</button>
+        <span></span>
+      </div>
+      <div class="content">
+        <div class="h1" style="font-size:30px;">Añadir<br>plato del menú</div>
+        <div class="meta-row"><span>//TOCA UNA RECETA PARA SUMARLA A ${calcState.date === todayDateKey() ? "HOY" : formatCalcDateLabel(calcState.date)}</span></div>
+        <div class="menu-day">${sections}</div>
+      </div>
+    </div>
+  `;
+}
+
+function ensurePlateState() {
+  if (!plateState) plateState = { lines: [] };
+  return plateState;
+}
+
+function plateTotals() {
+  return ensurePlateState().lines.reduce(
+    (acc, l) => {
+      acc.kcal += l.kcal;
+      acc.protein += l.protein;
+      return acc;
+    },
+    { kcal: 0, protein: 0 }
+  );
+}
+
+function addPlateLine(ingredient, grams) {
+  const p = ensurePlateState();
+  p.lines.push({
+    ingredientId: ingredient.id,
+    name: ingredient.name,
+    grams,
+    kcal: (ingredient.kcalPer100 * grams) / 100,
+    protein: (ingredient.proteinPer100 * grams) / 100,
+  });
+}
+
+function renderCalcPlato() {
+  const p = ensurePlateState();
+  const totals = plateTotals();
+  const datalist = Store.getIngredients()
+    .map((i) => `<option value="${escapeHtml(i.name)}"></option>`)
+    .join("");
+
+  const lines = p.lines.length
+    ? p.lines
+        .map(
+          (l, idx) => `
+        <div class="calc-entry-row">
+          <div class="calc-entry-info">
+            <div class="name">${escapeHtml(l.name)}</div>
+            <div class="sub">${fmtNum(l.grams)} g</div>
+          </div>
+          <div class="calc-entry-right">
+            <span class="kcal">${Math.round(l.kcal)}</span>
+            <button class="icon-btn" data-action="plate-remove-line" data-index="${idx}" aria-label="Eliminar">×</button>
+          </div>
+        </div>
+      `
+        )
+        .join("")
+    : `<div class="empty-state">Añade ingredientes con su cantidad en gramos.</div>`;
+
+  return `
+    <div class="screen screen--comidas">
+      <div class="topbar">
+        <button data-action="nav" data-href="#/comidas/calculadora">← Calculadora</button>
+        <span></span>
+      </div>
+      <div class="content">
+        <div class="h1" style="font-size:30px;">Crear<br>plato</div>
+        <div class="meta-row"><span>//DI LA CANTIDAD Y EL INGREDIENTE, SE SUMA SOLO</span></div>
+
+        <div class="plate-add-row">
+          <input type="text" id="plate-ingredient-input" list="plate-ingredients-list" placeholder="Ingrediente (ej. Queso cottage)">
+          <input type="number" inputmode="decimal" id="plate-grams-input" placeholder="g" class="plate-grams-input">
+          <button class="icon-btn" data-action="plate-add-line" aria-label="Añadir">+</button>
+        </div>
+        <datalist id="plate-ingredients-list">${datalist}</datalist>
+
+        <div class="calc-entry-list">${lines}</div>
+
+        <div class="calc-total-box">
+          <div class="calc-total-kcal">${Math.round(totals.kcal)}<small> kcal</small></div>
+          <div class="calc-total-sub">//${fmtNum(totals.protein)} G PROTEÍNA</div>
+        </div>
+
+        <div class="field" style="margin-top:14px;">
+          <label>Nombre del plato (opcional)</label>
+          <input type="text" id="plate-name-input" placeholder="Plato personalizado" value="${escapeHtml(p.name || "")}">
+        </div>
+
+        <button class="btn-primary-pill" data-action="plate-save" ${p.lines.length ? "" : "disabled"}>Añadir al día</button>
+      </div>
+    </div>
+  `;
+}
+
+function plateAddLine() {
+  const nameInput = document.getElementById("plate-ingredient-input");
+  const gramsInput = document.getElementById("plate-grams-input");
+  const name = nameInput.value.trim();
+  const grams = parseNum(gramsInput.value);
+  if (!name || !grams) return;
+  const ingredient = Store.findIngredientByName(name);
+  if (!ingredient) {
+    openQuickIngredientSheet(name, grams);
+    return;
+  }
+  addPlateLine(ingredient, grams);
+  appEl.innerHTML = renderCalcPlato();
+  const freshInput = document.getElementById("plate-ingredient-input");
+  if (freshInput) freshInput.focus();
+}
+
+function openQuickIngredientSheet(name, grams) {
+  overlayRoot.innerHTML = `
+    <div class="sheet-overlay" data-action="close-overlay">
+      <div class="sheet sheet--text" data-stop>
+        <div class="sheet-title">//Nuevo ingrediente</div>
+        <div class="field" style="margin-top:14px;">
+          <label>Nombre</label>
+          <input type="text" id="qi-name" value="${escapeHtml(name)}">
+        </div>
+        <div style="display:flex; gap:10px;">
+          <div class="field" style="flex:1"><label>Kcal / 100 g</label><input type="number" inputmode="decimal" id="qi-kcal" placeholder="0"></div>
+          <div class="field" style="flex:1"><label>Proteína / 100 g</label><input type="text" inputmode="decimal" id="qi-protein" placeholder="0"></div>
+        </div>
+        <button class="btn-primary-pill" style="background:var(--yellow); color:#4a4930;" data-action="save-quick-ingredient" data-grams="${grams}">Guardar y añadir</button>
+      </div>
+    </div>
+  `;
+  document.getElementById("qi-name").focus();
+}
+
+function saveQuickIngredient(gramsStr) {
+  const name = document.getElementById("qi-name").value.trim();
+  if (!name) return;
+  const kcalPer100 = parseNum(document.getElementById("qi-kcal").value) || 0;
+  const proteinPer100 = parseNum(document.getElementById("qi-protein").value) || 0;
+  const existingIds = Store.getIngredients().map((i) => i.id);
+  const ingredient = Store.saveIngredient({ id: newId(existingIds, name), name, kcalPer100, proteinPer100 });
+  closeOverlay();
+  const grams = parseNum(gramsStr);
+  if (grams) addPlateLine(ingredient, grams);
+  appEl.innerHTML = renderCalcPlato();
+}
+
+function plateSave() {
+  const p = ensurePlateState();
+  if (!p.lines.length) return;
+  const nameInput = document.getElementById("plate-name-input");
+  const name = (nameInput && nameInput.value.trim()) || "Plato personalizado";
+  const totals = plateTotals();
+  Store.addDayEntry(calcState.date, {
+    name,
+    kcal: totals.kcal,
+    protein: totals.protein,
+    source: "custom",
+    lines: p.lines.map((l) => ({ name: l.name, grams: l.grams })),
+  });
+  plateState = null;
+  navigate("#/comidas/calculadora");
+}
+
+// ================================================================
 // GYM
 // ================================================================
 
@@ -563,7 +851,6 @@ function renderGymHome() {
 
         <button class="btn-primary-pill" style="margin-top:16px; background:none; border:1.5px solid var(--garnet); color:var(--garnet);" data-action="nav" data-href="#/gym/historial">Historial de cargas</button>
       </div>
-      ${tabbar("gym")}
     </div>
   `;
 }
@@ -679,7 +966,6 @@ function renderWorkout(id) {
         <div class="exercise-list">${exCards}</div>
         ${w.note ? `<div class="note-block" style="opacity:0.85;">${w.note}</div>` : ""}
       </div>
-      ${tabbar("gym")}
     </div>
   `;
 }
@@ -771,7 +1057,6 @@ function renderHistorial() {
         <div class="meta-row"><span>//ÚLTIMO PESO Y EVOLUCIÓN</span></div>
         <div>${rows}</div>
       </div>
-      ${tabbar("gym")}
     </div>
   `;
 }
@@ -829,7 +1114,6 @@ function renderNatacion() {
         <div>${logRows}</div>
         <button class="btn-primary-pill" data-action="add-swim-log">+ Añadir registro</button>
       </div>
-      ${tabbar("gym")}
     </div>
   `;
 }
@@ -862,7 +1146,6 @@ function renderSwimIdeaForm(id) {
         <button class="btn-primary-pill" data-action="save-swim-idea">Guardar</button>
         ${!isNew ? `<button class="btn-text-danger" style="color:var(--garnet);" data-action="delete-swim-idea" data-id="${id}">Eliminar entreno</button>` : ""}
       </div>
-      ${tabbar("gym")}
     </div>
   `;
 }
@@ -1228,6 +1511,46 @@ document.addEventListener("click", (e) => {
       Store.removeIdeaPhoto(t.dataset.meal, t.dataset.id);
       refresh();
       break;
+    case "calc-day-shift": {
+      const d = new Date(calcState.date + "T00:00:00");
+      d.setDate(d.getDate() + parseInt(t.dataset.delta, 10));
+      const key = dateKeyFromDate(d);
+      if (key <= todayDateKey()) calcState.date = key;
+      appEl.innerHTML = renderCalcDia();
+      break;
+    }
+    case "delete-day-entry":
+      Store.deleteDayEntry(t.dataset.date, t.dataset.id);
+      refresh();
+      break;
+    case "calc-add-menu-idea": {
+      const idea = Store.getIdea(t.dataset.meal, t.dataset.id);
+      if (idea) {
+        Store.addDayEntry(calcState.date, {
+          name: idea.name,
+          kcal: idea.kcal,
+          protein: idea.protein,
+          source: "menu",
+          mealKey: t.dataset.meal,
+          ideaId: idea.id,
+        });
+      }
+      navigate("#/comidas/calculadora");
+      break;
+    }
+    case "plate-add-line":
+      plateAddLine();
+      break;
+    case "plate-remove-line":
+      ensurePlateState().lines.splice(parseInt(t.dataset.index, 10), 1);
+      appEl.innerHTML = renderCalcPlato();
+      break;
+    case "plate-save":
+      plateSave();
+      break;
+    case "save-quick-ingredient":
+      saveQuickIngredient(t.dataset.grams);
+      break;
     case "add-weight":
       openWeightKeypad(t.dataset.slug);
       break;
@@ -1339,6 +1662,13 @@ async function handlePhotoUpload(input) {
 document.addEventListener("change", (e) => {
   if (e.target && e.target.id === "photo-input") {
     handlePhotoUpload(e.target);
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && e.target && (e.target.id === "plate-ingredient-input" || e.target.id === "plate-grams-input")) {
+    e.preventDefault();
+    plateAddLine();
   }
 });
 

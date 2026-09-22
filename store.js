@@ -30,6 +30,21 @@ function seedMeals(savedMeals) {
   return meals;
 }
 
+// Igual que seedMeals pero para la lista de ingredientes de la calculadora:
+// añade los ingredientes base que falten por id, sin tocar los que el
+// usuario ya haya creado o editado.
+function seedIngredients(savedIngredients) {
+  const list = Array.isArray(savedIngredients) ? savedIngredients : [];
+  const byId = {};
+  list.forEach((ing) => {
+    byId[ing.id] = ing;
+  });
+  DEFAULT_INGREDIENTS.forEach((defIng) => {
+    if (!byId[defIng.id]) list.push(JSON.parse(JSON.stringify(defIng)));
+  });
+  return list;
+}
+
 function loadState() {
   let raw = null;
   try {
@@ -52,6 +67,8 @@ function loadState() {
     exerciseLogs: saved.exerciseLogs || {},
     swimIdeas: saved.swimIdeas || JSON.parse(JSON.stringify(DEFAULT_SWIM_IDEAS)),
     swimLogs: saved.swimLogs || [],
+    ingredients: seedIngredients(saved.ingredients),
+    dayLogs: saved.dayLogs || {},
     updatedAt: saved.updatedAt || 0,
   };
   return state;
@@ -170,6 +187,46 @@ const Store = {
   },
   deleteSwimLog(id) {
     this.state.swimLogs = (this.state.swimLogs || []).filter((l) => l.id !== id);
+    this.save();
+  },
+
+  // ---------- Calculadora de kcal: ingredientes ----------
+  getIngredients() {
+    return (this.state.ingredients || []).slice().sort((a, b) => a.name.localeCompare(b.name, "es"));
+  },
+  getIngredient(id) {
+    return (this.state.ingredients || []).find((i) => i.id === id);
+  },
+  findIngredientByName(name) {
+    const norm = name.trim().toLowerCase();
+    return (this.state.ingredients || []).find((i) => i.name.trim().toLowerCase() === norm);
+  },
+  saveIngredient(ing) {
+    const list = this.state.ingredients || (this.state.ingredients = []);
+    const idx = list.findIndex((i) => i.id === ing.id);
+    if (idx >= 0) list[idx] = ing;
+    else list.push(ing);
+    this.save();
+    return ing;
+  },
+  deleteIngredient(id) {
+    this.state.ingredients = (this.state.ingredients || []).filter((i) => i.id !== id);
+    this.save();
+  },
+
+  // ---------- Calculadora de kcal: registro diario ----------
+  getDayLog(dateKey) {
+    return this.state.dayLogs[dateKey] || [];
+  },
+  addDayEntry(dateKey, entry) {
+    const list = this.state.dayLogs[dateKey] || (this.state.dayLogs[dateKey] = []);
+    list.push(Object.assign({ id: "log_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) }, entry));
+    this.save();
+  },
+  deleteDayEntry(dateKey, entryId) {
+    const list = this.state.dayLogs[dateKey];
+    if (!list) return;
+    this.state.dayLogs[dateKey] = list.filter((e) => e.id !== entryId);
     this.save();
   },
 };

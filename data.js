@@ -530,6 +530,56 @@ const DEFAULT_IDEAS = {
   margen: [],
 };
 
+// ============================================================
+// CALCULADORA DE KCAL — ingredientes base (kcal/proteína por 100 g)
+// Valores estándar de tablas de composición genéricas, de partida —
+// se pueden editar o ampliar desde la app con el dato real de cada
+// etiqueta en cuanto se registre.
+// ============================================================
+
+const DEFAULT_INGREDIENTS = [
+  { id: "huevo", name: "Huevo", kcalPer100: 155, proteinPer100: 13 },
+  { id: "clara-huevo", name: "Clara de huevo", kcalPer100: 52, proteinPer100: 11 },
+  { id: "avena", name: "Avena", kcalPer100: 375, proteinPer100: 13.5 },
+  { id: "pan-integral", name: "Pan integral", kcalPer100: 247, proteinPer100: 9 },
+  { id: "pan-fajita", name: "Pan de fajita", kcalPer100: 280, proteinPer100: 8 },
+  { id: "aguacate", name: "Aguacate", kcalPer100: 160, proteinPer100: 2 },
+  { id: "jamon-serrano", name: "Jamón serrano", kcalPer100: 195, proteinPer100: 31 },
+  { id: "lomo-cocido", name: "Lomo cocido (fiambre)", kcalPer100: 111, proteinPer100: 20 },
+  { id: "yogur-griego", name: "Yogur griego", kcalPer100: 97, proteinPer100: 9 },
+  { id: "yogur-proteico", name: "Yogur proteico natural", kcalPer100: 60, proteinPer100: 10 },
+  { id: "queso-cottage", name: "Queso cottage", kcalPer100: 98, proteinPer100: 11 },
+  { id: "queso-crema", name: "Queso crema", kcalPer100: 245, proteinPer100: 5.5 },
+  { id: "mozzarella", name: "Mozzarella", kcalPer100: 250, proteinPer100: 22 },
+  { id: "pechuga-pollo", name: "Pechuga de pollo", kcalPer100: 165, proteinPer100: 31 },
+  { id: "carne-picada", name: "Carne picada", kcalPer100: 215, proteinPer100: 19 },
+  { id: "patata", name: "Patata", kcalPer100: 77, proteinPer100: 2 },
+  { id: "boniato", name: "Boniato", kcalPer100: 86, proteinPer100: 1.6 },
+  { id: "calabacin", name: "Calabacín", kcalPer100: 17, proteinPer100: 1.2 },
+  { id: "zanahoria", name: "Zanahoria", kcalPer100: 41, proteinPer100: 0.9 },
+  { id: "brocoli", name: "Brócoli", kcalPer100: 34, proteinPer100: 2.8 },
+  { id: "tomate", name: "Tomate", kcalPer100: 18, proteinPer100: 0.9 },
+  { id: "tomate-cherry", name: "Tomate cherry", kcalPer100: 18, proteinPer100: 0.9 },
+  { id: "tomate-triturado", name: "Tomate triturado", kcalPer100: 24, proteinPer100: 1.2 },
+  { id: "pepino", name: "Pepino", kcalPer100: 15, proteinPer100: 0.7 },
+  { id: "cebolla", name: "Cebolla", kcalPer100: 40, proteinPer100: 1.1 },
+  { id: "kiwi", name: "Kiwi", kcalPer100: 61, proteinPer100: 1.1 },
+  { id: "manzana", name: "Manzana", kcalPer100: 52, proteinPer100: 0.3 },
+  { id: "garbanzos-cocidos", name: "Garbanzos cocidos", kcalPer100: 164, proteinPer100: 8.9 },
+  { id: "atun-natural", name: "Atún al natural", kcalPer100: 116, proteinPer100: 26 },
+  { id: "gambas", name: "Gambas", kcalPer100: 85, proteinPer100: 18 },
+  { id: "langostino", name: "Langostino", kcalPer100: 71, proteinPer100: 17 },
+  { id: "leche", name: "Leche semidesnatada", kcalPer100: 42, proteinPer100: 3.4 },
+  { id: "leche-avena", name: "Leche de avena", kcalPer100: 40, proteinPer100: 0.4 },
+  { id: "chia", name: "Semillas de chía", kcalPer100: 486, proteinPer100: 17 },
+  { id: "natillas-proteicas", name: "Natillas proteicas", kcalPer100: 70, proteinPer100: 8 },
+  { id: "mostaza", name: "Mostaza", kcalPer100: 66, proteinPer100: 4 },
+  { id: "pepinillo", name: "Pepinillo", kcalPer100: 11, proteinPer100: 0.7 },
+  { id: "salsa-soja", name: "Salsa de soja", kcalPer100: 53, proteinPer100: 8 },
+  { id: "aceite-oliva", name: "Aceite de oliva", kcalPer100: 884, proteinPer100: 0 },
+  { id: "perejil", name: "Perejil", kcalPer100: 36, proteinPer100: 3 },
+];
+
 const COMPENSATION_NOTE =
   "Si la comida de mediodía sale más calórica de lo normal, resta ese exceso de la merienda o la cena eligiendo la opción más ligera. Si tienes mucha hambre en el almuerzo o la merienda, elige la opción más alta del rango en vez de forzarte a la más baja.";
 
