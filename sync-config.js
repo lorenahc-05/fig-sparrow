@@ -37,6 +37,6 @@
 //    "anon public" y pégalas aquí abajo, entre comillas:
 
 const SYNC_CONFIG = {
-  supabaseUrl: "https://stjbtjnmywujdmrpkqoq.supabase.co/rest/v1/",
+  supabaseUrl: "https://stjbtjnmywujdmrpkqoq.supabase.co",
   supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0amJ0am5teXd1amRtcnBrcW9xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzODQzNDYsImV4cCI6MjEwNDk2MDM0Nn0.-4TKEv-Koe70oQNaL0-4as6kWC7dat4y8iSGCiC2dFE",
 };

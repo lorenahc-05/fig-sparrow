@@ -1375,7 +1375,7 @@ function openSyncSheet() {
       <div class="sheet-overlay" data-action="close-overlay">
         <div class="sheet sheet--text" data-stop>
           <div class="sheet-title">//Sincronización</div>
-          <div class="sync-status-line">Todavía no está configurada. Añade tus datos de Firebase en el archivo <strong>sync-config.js</strong> (las instrucciones están dentro de ese mismo archivo) y esta app sincronizará sola entre tus dispositivos.</div>
+          <div class="sync-status-line">Todavía no está configurada. Añade tus datos de Supabase en el archivo <strong>sync-config.js</strong> (las instrucciones están dentro de ese mismo archivo) y esta app sincronizará sola entre tus dispositivos.</div>
           <button class="btn-primary-pill" style="background:var(--yellow); color:#4a4930;" data-action="close-overlay">Entendido</button>
         </div>
       </div>
@@ -1402,7 +1402,7 @@ function renderSyncSheet() {
           <div class="code">${code}</div>
           <div class="hint">Tu código de sincronización</div>
         </div>
-        <div class="sync-status-line">Pon este mismo código en tus otros dispositivos (botón de abajo) para que compartan los mismos datos: ideas, pesos, registros de natación y el titular de la home.</div>
+        <div class="sync-status-line">Pon este mismo código en tus otros dispositivos (botón de abajo) para que compartan los mismos datos: ideas de comidas, calculadora de kcal, pesos de gym, registros de natación y el titular de la home.</div>
 
         <div class="field">
           <label>Usar el código de otro dispositivo</label>
