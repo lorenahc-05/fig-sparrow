@@ -8,6 +8,13 @@ const overlayRoot = document.getElementById("overlay-root");
 let formState = null; // estado del formulario de idea en edición
 let keypadState = null; // estado del teclado numérico de peso
 
+function todayDayIndex() {
+  const jsDay = new Date().getDay(); // 0=domingo … 6=sábado
+  return (jsDay + 6) % 7; // 0=lunes … 6=domingo
+}
+
+let menuState = { view: "dias", day: todayDayIndex() }; // estado de la pantalla "Menú semanal"
+
 // ---------------- helpers ----------------
 
 function fmtNum(n) {
@@ -179,6 +186,7 @@ function renderComidas(seg) {
   const [, mealKey, sub, sub2] = seg;
 
   if (!mealKey) return renderMealHome();
+  if (mealKey === "menu") return renderMenuSemanal();
   if (!MEAL_DEFS[mealKey]) return renderMealHome();
 
   if (!sub) return renderIdeasList(mealKey);
@@ -226,6 +234,9 @@ function renderMealHome() {
           ${rows}
           <div class="total-row"><span>Total</span><span>${MEAL_TOTAL}</span></div>
         </div>
+        <button class="menu-semanal-btn" data-action="nav" data-href="#/comidas/menu">
+          <span>Menú semanal</span><span class="arrow">→</span>
+        </button>
       </div>
       ${tabbar("comidas")}
     </div>
@@ -245,6 +256,7 @@ function renderIdeasList(mealKey) {
             <div class="title">${escapeHtml(idea.name)}</div>
             <div class="kcal">${idea.kcal}</div>
           </div>
+          ${idea.days && idea.days.length ? `<div class="card-days">${idea.days.map((d) => DAY_ABBR[d]).join(" · ")}</div>` : ""}
           <div class="ingredients">${escapeHtml(ingredientsLine(idea.ingredients))}</div>
           <div class="row-bottom"><span>//${fmtNum(idea.protein)} G PROTEÍNA</span><span>VER →</span></div>
         </button>
@@ -285,12 +297,33 @@ function renderIdeaDetail(mealKey, ideaId) {
     )
     .join("");
 
+  const dayBadge =
+    idea.days && idea.days.length ? `<div class="day-badge">${idea.days.map((d) => DAY_ABBR[d]).join(" · ")}</div>` : "";
+
+  const stepsSection =
+    idea.steps && idea.steps.length
+      ? `<div style="margin-top:22px">
+           <div class="section-label">//Preparación</div>
+           <ol class="steps-list">${idea.steps.map((s) => `<li>${escapeHtml(s)}</li>`).join("")}</ol>
+         </div>`
+      : "";
+
   const adjust = idea.note
     ? `<div style="margin-top:22px">
          <div class="section-label">//Ajuste</div>
          <div class="adjust-note">${escapeHtml(idea.note)}</div>
        </div>`
     : "";
+
+  const photoSection = `
+    <div style="margin-top:22px">
+      <div class="section-label">//Foto</div>
+      ${idea.photo ? `<img class="idea-photo" src="${idea.photo}" alt="${escapeHtml(idea.name)}">` : ""}
+      <input type="file" accept="image/*" capture="environment" id="photo-input" style="display:none" data-meal="${mealKey}" data-id="${idea.id}">
+      <button class="btn-add-line" data-action="upload-photo">${idea.photo ? "Cambiar foto" : "+ Añadir foto"}</button>
+      ${idea.photo ? `<button class="btn-text-danger" data-action="remove-photo" data-meal="${mealKey}" data-id="${idea.id}">Quitar foto</button>` : ""}
+    </div>
+  `;
 
   return `
     <div class="screen screen--comidas">
@@ -301,13 +334,16 @@ function renderIdeaDetail(mealKey, ideaId) {
       <div class="content">
         <div class="h1">${escapeHtml(idea.name)}</div>
         ${idea.tag ? `<div class="tag-line">${escapeHtml(idea.tag)}</div>` : ""}
+        ${dayBadge}
         <div class="stat-row">
           <div class="stat-box"><div class="label">Kcal</div><div class="value">${idea.kcal}</div></div>
           <div class="stat-box fill"><div class="label">Proteína</div><div class="value">${fmtNum(idea.protein)}<small>g</small></div></div>
         </div>
         <div class="section-label">//Ingredientes</div>
         <div class="ingredient-list">${ingRows}</div>
+        ${stepsSection}
         ${adjust}
+        ${photoSection}
       </div>
       ${tabbar("comidas")}
     </div>
@@ -376,6 +412,115 @@ function renderIdeaForm(mealKey, ideaId) {
         ${!isNew ? `<button class="btn-text-danger" data-action="delete-idea" data-meal="${mealKey}" data-id="${ideaId}">Eliminar idea</button>` : ""}
       </div>
       ${tabbar("comidas")}
+    </div>
+  `;
+}
+
+// ================================================================
+// MENÚ SEMANAL — calendario de la semana, día a día o tabla completa
+// (por ahora se calcula a partir de idea.days; en el futuro esta
+// asignación podrá venir sincronizada desde la herramienta de
+// menú semanal interactivo con drag-and-drop)
+// ================================================================
+
+function ideasForDay(mealKey, dayIdx) {
+  return Store.getIdeas(mealKey).filter((i) => Array.isArray(i.days) && i.days.includes(dayIdx));
+}
+
+function menuMealKeys() {
+  return Object.keys(MEAL_DEFS)
+    .filter((k) => k !== "cafe" && k !== "margen")
+    .sort((a, b) => MEAL_DEFS[a].order - MEAL_DEFS[b].order);
+}
+
+function renderMenuSemanal() {
+  const mealKeys = menuMealKeys();
+
+  const toggle = `
+    <div class="menu-view-toggle">
+      <button class="${menuState.view === "dias" ? "is-active" : ""}" data-action="menu-set-view" data-view="dias">Día a día</button>
+      <button class="${menuState.view === "tabla" ? "is-active" : ""}" data-action="menu-set-view" data-view="tabla">Tabla completa</button>
+    </div>
+  `;
+
+  const dayPills = DAY_LABELS.map(
+    (label, i) => `
+      <button class="day-pill ${menuState.day === i ? "is-active" : ""}" data-action="menu-select-day" data-day="${i}">${DAY_ABBR[i]}</button>
+    `
+  ).join("");
+
+  const body = menuState.view === "tabla" ? renderMenuTable(mealKeys) : renderMenuDay(mealKeys, menuState.day);
+
+  return `
+    <div class="screen screen--comidas">
+      <div class="topbar">
+        <button data-action="nav" data-href="#/comidas">← Reparto del día</button>
+        <span></span>
+      </div>
+      <div class="content">
+        <div class="h1" style="font-size:34px;">Menú<br>semanal</div>
+        <div class="meta-row"><span>//${MEAL_TOTAL_TARGET}</span><span>//${PROTEIN_TARGET}</span></div>
+        ${toggle}
+        ${menuState.view === "dias" ? `<div class="day-pills">${dayPills}</div>` : ""}
+        ${body}
+      </div>
+      ${tabbar("comidas")}
+    </div>
+  `;
+}
+
+function renderMenuDay(mealKeys, dayIdx) {
+  const blocks = mealKeys
+    .map((mealKey) => {
+      const def = MEAL_DEFS[mealKey];
+      const ideas = ideasForDay(mealKey, dayIdx);
+      const cards = ideas.length
+        ? ideas
+            .map(
+              (idea) => `
+          <button class="menu-recipe-card" data-action="nav" data-href="#/comidas/${mealKey}/${idea.id}">
+            <div class="row-top">
+              <div class="title">${escapeHtml(idea.name)}</div>
+              <div class="kcal">${idea.kcal}</div>
+            </div>
+            <div class="ingredients">${escapeHtml(ingredientsLine(idea.ingredients))}</div>
+          </button>
+        `
+            )
+            .join("")
+        : `<div class="empty-state" style="text-align:left;">Sin receta asignada este día.</div>`;
+
+      return `
+        <div class="menu-meal-block">
+          <div class="menu-meal-label">${def.label}<span class="menu-meal-kcal">${def.kcal} kcal</span></div>
+          ${cards}
+        </div>
+      `;
+    })
+    .join("");
+
+  return `<div class="menu-day">${blocks}</div>`;
+}
+
+function renderMenuTable(mealKeys) {
+  const headerCells = DAY_ABBR.map((d) => `<th>${d}</th>`).join("");
+  const rows = mealKeys
+    .map((mealKey) => {
+      const def = MEAL_DEFS[mealKey];
+      const cells = DAY_LABELS.map((_, dayIdx) => {
+        const idea = ideasForDay(mealKey, dayIdx)[0];
+        return `<td>${idea ? `<span class="cell-name">${escapeHtml(idea.name)}</span><span class="cell-kcal">${idea.kcal} kcal</span>` : "—"}</td>`;
+      }).join("");
+      return `<tr><th>${def.label}</th>${cells}</tr>`;
+    })
+    .join("");
+
+  return `
+    <div class="menu-table-wrap">
+      <table class="menu-table">
+        <thead><tr><th></th>${headerCells}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
     </div>
   `;
 }
@@ -1066,6 +1211,23 @@ document.addEventListener("click", (e) => {
       navigate(`#/comidas/${t.dataset.meal}`);
       break;
     }
+    case "menu-select-day":
+      menuState.day = parseInt(t.dataset.day, 10);
+      appEl.innerHTML = renderMenuSemanal();
+      break;
+    case "menu-set-view":
+      menuState.view = t.dataset.view;
+      appEl.innerHTML = renderMenuSemanal();
+      break;
+    case "upload-photo": {
+      const input = document.getElementById("photo-input");
+      if (input) input.click();
+      break;
+    }
+    case "remove-photo":
+      Store.removeIdeaPhoto(t.dataset.meal, t.dataset.id);
+      refresh();
+      break;
     case "add-weight":
       openWeightKeypad(t.dataset.slug);
       break;
@@ -1129,6 +1291,54 @@ document.addEventListener("input", (e) => {
     formState.ingredients[idx][key] = e.target.value;
   } else {
     formState[field] = e.target.value;
+  }
+});
+
+// -------- foto de receta: redimensiona en el móvil antes de guardar --------
+
+function resizeImageToDataUrl(file, maxSize, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > height && width > maxSize) {
+          height = Math.round((height * maxSize) / width);
+          width = maxSize;
+        } else if (height > maxSize) {
+          width = Math.round((width * maxSize) / height);
+          height = maxSize;
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handlePhotoUpload(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  try {
+    const dataUrl = await resizeImageToDataUrl(file, 900, 0.72);
+    Store.setIdeaPhoto(input.dataset.meal, input.dataset.id, dataUrl);
+    refresh();
+  } catch (e) {
+    /* imagen no válida o navegador sin soporte: se ignora */
+  }
+}
+
+document.addEventListener("change", (e) => {
+  if (e.target && e.target.id === "photo-input") {
+    handlePhotoUpload(e.target);
   }
 });
 

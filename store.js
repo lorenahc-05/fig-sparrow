@@ -4,6 +4,32 @@
 
 const STORAGE_KEY = "kcalgym_state_v1";
 
+// Añade a los datos ya guardados cualquier receta nueva de DEFAULT_IDEAS que
+// todavía no exista (por id) y rellena campos nuevos (days/steps) en las que
+// ya existían pero se guardaron antes de que esos campos existieran. Nunca
+// toca ideas creadas o editadas a mano por el usuario más allá de eso.
+function seedMeals(savedMeals) {
+  const meals = savedMeals || {};
+  Object.keys(DEFAULT_IDEAS).forEach((mealKey) => {
+    if (!Array.isArray(meals[mealKey])) meals[mealKey] = [];
+    const list = meals[mealKey];
+    const byId = {};
+    list.forEach((idea) => {
+      byId[idea.id] = idea;
+    });
+    DEFAULT_IDEAS[mealKey].forEach((defIdea) => {
+      const existing = byId[defIdea.id];
+      if (!existing) {
+        list.push(JSON.parse(JSON.stringify(defIdea)));
+      } else {
+        if (existing.days === undefined && defIdea.days) existing.days = defIdea.days.slice();
+        if (existing.steps === undefined && defIdea.steps) existing.steps = defIdea.steps.slice();
+      }
+    });
+  });
+  return meals;
+}
+
 function loadState() {
   let raw = null;
   try {
@@ -22,7 +48,7 @@ function loadState() {
 
   const state = {
     headline: saved.headline !== undefined ? saved.headline : "CERRAR LAS 3 SESIONES Y NADAR EL SÁBADO",
-    meals: saved.meals || JSON.parse(JSON.stringify(DEFAULT_IDEAS)),
+    meals: seedMeals(saved.meals),
     exerciseLogs: saved.exerciseLogs || {},
     swimIdeas: saved.swimIdeas || JSON.parse(JSON.stringify(DEFAULT_SWIM_IDEAS)),
     swimLogs: saved.swimLogs || [],
@@ -65,6 +91,18 @@ const Store = {
   deleteIdea(mealKey, ideaId) {
     const list = this.state.meals[mealKey] || [];
     this.state.meals[mealKey] = list.filter((i) => i.id !== ideaId);
+    this.save();
+  },
+  setIdeaPhoto(mealKey, ideaId, dataUrl) {
+    const idea = this.getIdea(mealKey, ideaId);
+    if (!idea) return;
+    idea.photo = dataUrl;
+    this.save();
+  },
+  removeIdeaPhoto(mealKey, ideaId) {
+    const idea = this.getIdea(mealKey, ideaId);
+    if (!idea) return;
+    delete idea.photo;
     this.save();
   },
 
