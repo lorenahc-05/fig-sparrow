@@ -69,6 +69,7 @@ function loadState() {
     swimLogs: saved.swimLogs || [],
     ingredients: seedIngredients(saved.ingredients),
     dayLogs: saved.dayLogs || {},
+    mercadonaCorrecciones: saved.mercadonaCorrecciones || {},
     updatedAt: saved.updatedAt || 0,
   };
   return state;
@@ -211,6 +212,25 @@ const Store = {
   },
   deleteIngredient(id) {
     this.state.ingredients = (this.state.ingredients || []).filter((i) => i.id !== id);
+    this.save();
+  },
+
+  // ---------- Correcciones de macros de Mercadona (por EAN) ----------
+  // Cuando el dato de Open Food Facts no coincide con la foto real de la
+  // etiqueta, el usuario puede corregirlo aquí; la corrección se guarda para
+  // siempre (y se sincroniza) y gana siempre a lo que devuelva Open Food Facts.
+  getNutritionCorrection(ean) {
+    if (!ean) return null;
+    return (this.state.mercadonaCorrecciones || {})[ean] || null;
+  },
+  saveNutritionCorrection(ean, info) {
+    if (!ean) return;
+    const map = this.state.mercadonaCorrecciones || (this.state.mercadonaCorrecciones = {});
+    map[ean] = {
+      kcalPer100: info.kcalPer100,
+      proteinPer100: info.proteinPer100,
+      correctedAt: Date.now(),
+    };
     this.save();
   },
 

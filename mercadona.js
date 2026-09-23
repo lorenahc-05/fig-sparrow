@@ -15,7 +15,7 @@
 
 const Mercadona = {
   CACHE_CATALOGO: "fns_mercadona_catalogo_v1",
-  CACHE_DETALLE_PREFIJO: "fns_mercadona_detalle_",
+  CACHE_DETALLE_PREFIJO: "fns_mercadona_detalle_v2_", // v2: añade photos/photoEtiqueta a la ficha
   CACHE_NUTRICION_PREFIJO: "fns_mercadona_nutricion_",
   TTL_CATALOGO: 24 * 60 * 60 * 1000,
   TTL_DETALLE: 24 * 60 * 60 * 1000,
@@ -144,12 +144,19 @@ const Mercadona = {
     if (cache) return cache;
 
     const data = await this._getJSON("/api/products/" + id + "/");
+    const listaFotos = Array.isArray(data.photos) ? data.photos : [];
+    const fotos = listaFotos.map((f) => f.regular).filter(Boolean);
+    // La foto con perspective:9 es casi siempre el reverso del envase, con la
+    // tabla de información nutricional — la ponemos primero si existe.
+    const fotoEtiqueta = listaFotos.find((f) => f.perspective === 9);
     const info = {
       id: data.id,
       name: data.display_name,
       brand: data.brand || "",
       ean: data.ean || "",
-      photo: data.photos && data.photos[0] ? data.photos[0].regular : null,
+      photo: fotos[0] || null,
+      photos: fotos, // todas las fotos de la ficha, para poder comprobar la etiqueta a ojo
+      photoEtiqueta: fotoEtiqueta ? fotoEtiqueta.regular : null,
       ingredients: data.nutrition_information ? data.nutrition_information.ingredients || "" : "",
       allergens: data.nutrition_information ? data.nutrition_information.allergens || "" : "",
       shareUrl: data.share_url || "",
@@ -159,9 +166,18 @@ const Mercadona = {
     return info;
   },
 
-  /** Macros por 100g desde Open Food Facts, buscadas por EAN exacto. */
+  /**
+   * Macros por 100g. Si el usuario ya corrigió este EAN a mano (tras
+   * comparar con la foto de la etiqueta), esa corrección manda siempre
+   * sobre Open Food Facts.
+   */
   async nutricionPorEan(ean) {
     if (!ean) return null;
+
+    if (typeof Store !== "undefined") {
+      const correccion = Store.getNutritionCorrection(ean);
+      if (correccion) return correccion;
+    }
 
     const key = this.CACHE_NUTRICION_PREFIJO + ean;
     const cache = this._leerCache(key, this.TTL_NUTRICION);
