@@ -795,24 +795,114 @@ function plateAddLine() {
   if (freshInput) freshInput.focus();
 }
 
-function openQuickIngredientSheet(name, grams) {
+function openQuickIngredientSheet(name, grams, prefill) {
+  const p = prefill || {};
+  const mostrarBotonMercadona = typeof Mercadona !== "undefined" && Mercadona.isConfigured();
   overlayRoot.innerHTML = `
     <div class="sheet-overlay">
       <div class="sheet sheet--text" data-stop>
         <div class="sheet-title">//Nuevo ingrediente</div>
+        ${
+          mostrarBotonMercadona
+            ? `<button class="btn-add-line" data-action="open-mercadona-search" data-grams="${grams}" style="margin-top:12px;">Buscar en Mercadona</button>`
+            : ""
+        }
+        ${p.fromMercadona ? `<div class="mkd-badge">//Datos de "${escapeHtml(p.mercadonaName || "")}" — revisa antes de guardar</div>` : ""}
         <div class="field" style="margin-top:14px;">
           <label>Nombre</label>
           <input type="text" id="qi-name" value="${escapeHtml(name)}">
         </div>
         <div style="display:flex; gap:10px;">
-          <div class="field" style="flex:1"><label>Kcal / 100 g</label><input type="number" inputmode="decimal" id="qi-kcal" placeholder="0"></div>
-          <div class="field" style="flex:1"><label>Proteína / 100 g</label><input type="text" inputmode="decimal" id="qi-protein" placeholder="0"></div>
+          <div class="field" style="flex:1"><label>Kcal / 100 g</label><input type="number" inputmode="decimal" id="qi-kcal" placeholder="0" value="${p.kcalPer100 != null ? p.kcalPer100 : ""}"></div>
+          <div class="field" style="flex:1"><label>Proteína / 100 g</label><input type="text" inputmode="decimal" id="qi-protein" placeholder="0" value="${p.proteinPer100 != null ? p.proteinPer100 : ""}"></div>
         </div>
         <button class="btn-primary-pill" style="background:var(--yellow); color:#4a4930;" data-action="save-quick-ingredient" data-grams="${grams}">Guardar y añadir</button>
       </div>
     </div>
   `;
   document.getElementById("qi-name").focus();
+}
+
+function openMercadonaSearchSheet(grams) {
+  overlayRoot.innerHTML = `
+    <div class="sheet-overlay">
+      <div class="sheet sheet--text" data-stop>
+        <div class="sheet-title">//Buscar en Mercadona</div>
+        <div class="field" style="margin-top:14px;">
+          <input type="text" id="mkd-search-input" placeholder="Ej. yogur natural" autocomplete="off">
+        </div>
+        <div id="mkd-search-results" class="mkd-results" data-grams="${grams}"></div>
+        <button class="btn-add-line" data-action="mercadona-cancel" data-grams="${grams}" style="margin-top:10px;">← Volver</button>
+      </div>
+    </div>
+  `;
+  const input = document.getElementById("mkd-search-input");
+  input.focus();
+  let timer = null;
+  input.addEventListener("input", () => {
+    clearTimeout(timer);
+    const q = input.value;
+    timer = setTimeout(() => runMercadonaSearch(q), 350);
+  });
+}
+
+async function runMercadonaSearch(query) {
+  const box = document.getElementById("mkd-search-results");
+  if (!box) return;
+  const q = query.trim();
+  if (q.length < 2) {
+    box.innerHTML = "";
+    return;
+  }
+  box.innerHTML = `<div class="empty-state">Buscando…</div>`;
+
+  let resultados;
+  try {
+    resultados = await Mercadona.buscar(q);
+  } catch (e) {
+    const stillThere = document.getElementById("mkd-search-results");
+    if (stillThere) stillThere.innerHTML = `<div class="empty-state">No se pudo conectar con Mercadona. ¿El proxy está bien configurado?</div>`;
+    return;
+  }
+
+  const current = document.getElementById("mkd-search-results");
+  if (!current) return; // el usuario pudo cerrar el sheet mientras esperábamos
+  if (!resultados.length) {
+    current.innerHTML = `<div class="empty-state">Sin resultados para "${escapeHtml(q)}".</div>`;
+    return;
+  }
+
+  current.innerHTML = resultados
+    .map(
+      (p) => `
+    <button class="mkd-result-row" data-action="mercadona-pick" data-id="${p.id}">
+      <img src="${p.thumbnail || ""}" alt="" class="mkd-thumb" loading="lazy">
+      <span class="mkd-name">${escapeHtml(p.name)}${p.packaging ? ` <small>(${escapeHtml(p.packaging)})</small>` : ""}</span>
+    </button>
+  `
+    )
+    .join("");
+}
+
+async function pickMercadonaProduct(id, grams) {
+  const box = document.getElementById("mkd-search-results");
+  if (box) box.innerHTML = `<div class="empty-state">Cargando datos nutricionales…</div>`;
+
+  let full;
+  try {
+    full = await Mercadona.productoCompleto(id);
+  } catch (e) {
+    const stillThere = document.getElementById("mkd-search-results");
+    if (stillThere) stillThere.innerHTML = `<div class="empty-state">No se pudo cargar la ficha del producto.</div>`;
+    return;
+  }
+
+  openQuickIngredientSheet(full.name, grams, {
+    kcalPer100: full.kcalPer100,
+    proteinPer100: full.proteinPer100,
+    fromMercadona: true,
+    mercadonaName: full.name,
+  });
 }
 
 function saveQuickIngredient(gramsStr) {
@@ -1596,6 +1686,19 @@ document.addEventListener("click", (e) => {
     case "save-quick-ingredient":
       saveQuickIngredient(t.dataset.grams);
       break;
+    case "open-mercadona-search":
+      openMercadonaSearchSheet(t.dataset.grams);
+      break;
+    case "mercadona-cancel": {
+      const nameInput = document.getElementById("mkd-search-input");
+      openQuickIngredientSheet(nameInput ? nameInput.value : "", t.dataset.grams);
+      break;
+    }
+    case "mercadona-pick": {
+      const resultsBox = document.getElementById("mkd-search-results");
+      pickMercadonaProduct(t.dataset.id, resultsBox ? resultsBox.dataset.grams : "");
+      break;
+    }
     case "add-weight":
       openWeightKeypad(t.dataset.slug);
       break;
