@@ -4,8 +4,8 @@
     {
       "name": "fig-n-sparrow",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["--yes", "http-server", "-c-1", "-p", "5177", "."],
-      "port": 5177
+      "runtimeArgs": ["--yes", "http-server", "-c-1", "-p", "5179", "."],
+      "port": 5179
     }
   ]
 }

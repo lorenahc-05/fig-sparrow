@@ -15,7 +15,7 @@
 
 const Mercadona = {
   CACHE_CATALOGO: "fns_mercadona_catalogo_v1",
-  CACHE_DETALLE_PREFIJO: "fns_mercadona_detalle_v2_", // v2: añade photos/photoEtiqueta a la ficha
+  CACHE_DETALLE_PREFIJO: "fns_mercadona_detalle_v3_", // v3: fotos como {regular, zoom}
   CACHE_NUTRICION_PREFIJO: "fns_mercadona_nutricion_",
   TTL_CATALOGO: 24 * 60 * 60 * 1000,
   TTL_DETALLE: 24 * 60 * 60 * 1000,
@@ -145,18 +145,23 @@ const Mercadona = {
 
     const data = await this._getJSON("/api/products/" + id + "/");
     const listaFotos = Array.isArray(data.photos) ? data.photos : [];
-    const fotos = listaFotos.map((f) => f.regular).filter(Boolean);
+    // Cada foto se guarda en dos tamaños: "regular" para la miniatura en la
+    // tarjeta y "zoom" (3600x3600) para poder leer la etiqueta a pantalla
+    // completa sin que se pixele.
+    const fotos = listaFotos
+      .filter((f) => f.regular)
+      .map((f) => ({ regular: f.regular, zoom: f.zoom || f.regular }));
     // La foto con perspective:9 es casi siempre el reverso del envase, con la
     // tabla de información nutricional — la ponemos primero si existe.
-    const fotoEtiqueta = listaFotos.find((f) => f.perspective === 9);
+    const fotoEtiquetaRaw = listaFotos.find((f) => f.perspective === 9 && f.regular);
     const info = {
       id: data.id,
       name: data.display_name,
       brand: data.brand || "",
       ean: data.ean || "",
-      photo: fotos[0] || null,
+      photo: fotos[0] ? fotos[0].regular : null,
       photos: fotos, // todas las fotos de la ficha, para poder comprobar la etiqueta a ojo
-      photoEtiqueta: fotoEtiqueta ? fotoEtiqueta.regular : null,
+      photoEtiqueta: fotoEtiquetaRaw ? { regular: fotoEtiquetaRaw.regular, zoom: fotoEtiquetaRaw.zoom || fotoEtiquetaRaw.regular } : null,
       ingredients: data.nutrition_information ? data.nutrition_information.ingredients || "" : "",
       allergens: data.nutrition_information ? data.nutrition_information.allergens || "" : "",
       shareUrl: data.share_url || "",

@@ -30,7 +30,6 @@ let calcState = { date: todayDateKey() }; // estado de la pantalla "Calculadora 
 let plateState = null; // estado del plato en construcción (calculadora por ingredientes)
 let plateSelection = null; // producto elegido en el buscador de la fila de añadir (guardado o de Mercadona)
 let plateSuggestionsData = []; // última lista de sugerencias renderizada, para poder pincharlas por índice
-let plateVerifyOpen = false; // ¿está desplegado el panel de "comprobar con la foto de la etiqueta"?
 
 // ---------------- helpers ----------------
 
@@ -726,7 +725,6 @@ function renderCalcPlato() {
   const p = ensurePlateState();
   const totals = plateTotals();
   plateSelection = null; // pantalla nueva: no arrastramos la elección de una visita anterior
-  plateVerifyOpen = false;
 
   const lines = p.lines.length
     ? p.lines
@@ -765,7 +763,7 @@ function renderCalcPlato() {
           <input type="number" inputmode="decimal" id="plate-grams-input" placeholder="g" class="plate-grams-input">
           <button class="icon-btn" data-action="plate-add-line" aria-label="Añadir">+</button>
         </div>
-        <div id="plate-preview"></div>
+        <div id="plate-product-area"></div>
 
         <div class="calc-entry-list">${lines}</div>
 
@@ -805,7 +803,7 @@ function wirePlateAddRow() {
   nameInput.addEventListener("input", () => {
     if (plateSelection && nameInput.value.trim() !== plateSelection.name) {
       plateSelection = null;
-      renderPlatePreview();
+      renderPlateCard();
     }
 
     const q = nameInput.value.trim();
@@ -859,7 +857,7 @@ function wirePlateAddRow() {
     }
   });
 
-  gramsInput.addEventListener("input", renderPlatePreview);
+  gramsInput.addEventListener("input", recalcPlateCard);
 }
 
 function suggestionRowHtml(it, idx) {
@@ -919,14 +917,30 @@ async function pickPlateSuggestion(idx) {
   const suggestionsBox = document.getElementById("plate-suggestions");
   if (nameInput) nameInput.value = item.name;
   if (suggestionsBox) suggestionsBox.innerHTML = "";
-  plateVerifyOpen = false;
 
   if (item.source === "local") {
-    plateSelection = item;
-    renderPlatePreview();
+    plateSelection = {
+      source: "local",
+      id: item.id,
+      name: item.name,
+      kcalPer100: item.kcalPer100,
+      proteinPer100: item.proteinPer100,
+      photos: [],
+      photoEtiqueta: null,
+    };
+    renderPlateCard();
   } else {
-    plateSelection = Object.assign({}, item, { cargandoMacros: true });
-    renderPlatePreview();
+    plateSelection = {
+      source: "mercadona",
+      id: item.id,
+      name: item.name,
+      kcalPer100: null,
+      proteinPer100: null,
+      photos: [],
+      photoEtiqueta: null,
+      cargandoMacros: true,
+    };
+    renderPlateCard();
 
     let full = null;
     try {
@@ -945,21 +959,23 @@ async function pickPlateSuggestion(idx) {
       kcalPer100: full ? full.kcalPer100 : null,
       proteinPer100: full ? full.proteinPer100 : null,
       ean: full ? full.ean : null,
-      thumbnail: item.thumbnail,
       photos: full ? full.photos : [],
       photoEtiqueta: full ? full.photoEtiqueta : null,
       cargandoMacros: false,
     };
-    renderPlatePreview();
+    renderPlateCard();
   }
 
   const gramsInput = document.getElementById("plate-grams-input");
   if (gramsInput) gramsInput.focus();
 }
 
-/** Línea de "esto es lo que voy a añadir", siempre debajo de los campos, nunca los tapa. */
-function renderPlatePreview() {
-  const box = document.getElementById("plate-preview");
+/**
+ * Tarjeta grande del producto elegido (o de alta manual): fotos, nombre y
+ * macros editables, siempre en la propia pantalla — nunca en un modal.
+ */
+function renderPlateCard() {
+  const box = document.getElementById("plate-product-area");
   if (!box) return;
 
   if (!plateSelection) {
@@ -968,87 +984,136 @@ function renderPlatePreview() {
   }
 
   if (plateSelection.cargandoMacros) {
-    box.innerHTML = `<div class="plate-preview-row">Cargando datos de "${escapeHtml(plateSelection.name)}"…</div>`;
+    box.innerHTML = `
+      <div class="plate-calc-total"></div>
+      <div class="plate-card"><div class="plate-card-loading">Cargando datos de "${escapeHtml(plateSelection.name)}"…</div></div>
+    `;
     return;
   }
 
-  let filaPrincipal;
-  if (plateSelection.kcalPer100 == null) {
-    filaPrincipal = `<div class="plate-preview-row plate-preview-warn">"${escapeHtml(
-      plateSelection.name
-    )}" no tiene macros conocidas — al pulsar + podrás escribirlas a mano.</div>`;
-  } else {
-    const gramsInput = document.getElementById("plate-grams-input");
-    const grams = gramsInput ? parseNum(gramsInput.value) : 0;
-    const kcalCalc = grams ? Math.round((plateSelection.kcalPer100 * grams) / 100) : null;
-    const proteinCalc =
-      grams && plateSelection.proteinPer100 != null ? Math.round(((plateSelection.proteinPer100 * grams) / 100) * 10) / 10 : null;
-
-    filaPrincipal = `
-      <div class="plate-preview-row">
-        ${plateSelection.thumbnail ? `<img src="${plateSelection.thumbnail}" class="mkd-thumb" alt="">` : ""}
-        <div class="plate-preview-info">
-          <div class="plate-preview-name">${escapeHtml(plateSelection.name)}</div>
-          <div class="plate-preview-sub">${Math.round(plateSelection.kcalPer100)} kcal/100g${
-      plateSelection.proteinPer100 != null ? ` · ${plateSelection.proteinPer100} g prot./100g` : ""
-    }</div>
-        </div>
-        ${kcalCalc != null ? `<div class="plate-preview-total">${kcalCalc}<small>kcal${proteinCalc != null ? ` · ${proteinCalc}g prot.` : ""}</small></div>` : ""}
-      </div>
-    `;
-  }
-
-  const tieneFotos = plateSelection.source === "mercadona" && plateSelection.photos && plateSelection.photos.length > 0;
-  const toggle = tieneFotos
-    ? `<button type="button" class="plate-verify-toggle" data-action="plate-toggle-verify">${
-        plateVerifyOpen ? "Ocultar foto de la etiqueta" : "¿Coincide con la etiqueta? Comprobar foto"
-      }</button>`
-    : "";
-  const panel = tieneFotos && plateVerifyOpen ? renderPlateVerifyPanel() : "";
-
-  box.innerHTML = filaPrincipal + toggle + panel;
-}
-
-/** Fotos reales del producto (la de la tabla nutricional primero, si Mercadona la trae) + alta de corrección. */
-function renderPlateVerifyPanel() {
   const fotos = plateSelection.photoEtiqueta
-    ? [plateSelection.photoEtiqueta].concat(plateSelection.photos.filter((u) => u !== plateSelection.photoEtiqueta))
-    : plateSelection.photos;
+    ? [plateSelection.photoEtiqueta].concat(
+        plateSelection.photos.filter((f) => f.regular !== plateSelection.photoEtiqueta.regular)
+      )
+    : plateSelection.photos || [];
 
-  return `
-    <div class="plate-verify-panel">
-      <div class="plate-verify-photos">
-        ${fotos.map((url) => `<img src="${url}" class="plate-verify-photo" alt="Foto del producto" loading="lazy">`).join("")}
-      </div>
-      <div class="plate-verify-form">
-        <div class="field"><label>Kcal / 100 g (según la foto)</label><input type="number" inputmode="decimal" id="pv-kcal" value="${
+  const fotosHtml = fotos.length
+    ? `<div class="plate-card-photos">${fotos
+        .map(
+          (f) =>
+            `<img src="${f.regular}" data-action="plate-open-photo" data-url="${f.zoom}" class="plate-card-photo" alt="Foto del producto" loading="lazy">`
+        )
+        .join("")}</div>`
+    : "";
+
+  box.innerHTML = `
+    <div id="plate-calc-total" class="plate-calc-total"></div>
+    <div class="plate-card">
+      ${fotosHtml}
+      <div class="plate-card-name">${escapeHtml(plateSelection.name)}</div>
+      <div class="plate-card-fields">
+        <div class="field"><label>Kcal / 100 g</label><input type="number" inputmode="decimal" id="pc-kcal" placeholder="0" value="${
           plateSelection.kcalPer100 != null ? plateSelection.kcalPer100 : ""
         }"></div>
-        <div class="field"><label>Proteína / 100 g</label><input type="text" inputmode="decimal" id="pv-protein" value="${
+        <div class="field"><label>Proteína / 100 g</label><input type="text" inputmode="decimal" id="pc-protein" placeholder="0" value="${
           plateSelection.proteinPer100 != null ? plateSelection.proteinPer100 : ""
         }"></div>
-        <button type="button" class="btn-add-line" data-action="plate-save-correction">Guardar corrección para este producto</button>
       </div>
+      <div class="plate-card-actions">
+        <button type="button" class="btn-primary-pill" id="plate-card-add-btn" style="background:var(--yellow); color:#4a4930;" data-action="plate-card-add" disabled>Añadir línea</button>
+        <button type="button" class="btn-add-line" data-action="plate-card-cancel">Cambiar producto</button>
+      </div>
+    </div>
+  `;
+
+  const kcalInput = document.getElementById("pc-kcal");
+  const proteinInput = document.getElementById("pc-protein");
+  if (kcalInput) kcalInput.addEventListener("input", recalcPlateCard);
+  if (proteinInput) proteinInput.addEventListener("input", recalcPlateCard);
+  recalcPlateCard();
+}
+
+/** Recalcula el total en vivo (arriba de la tarjeta) según gramos + macros de la tarjeta. */
+function recalcPlateCard() {
+  const totalBox = document.getElementById("plate-calc-total");
+  const addBtn = document.getElementById("plate-card-add-btn");
+  if (!totalBox) return;
+
+  const gramsInput = document.getElementById("plate-grams-input");
+  const kcalInput = document.getElementById("pc-kcal");
+  const proteinInput = document.getElementById("pc-protein");
+
+  const grams = gramsInput ? parseNum(gramsInput.value) : null;
+  const kcalPer100 = kcalInput ? parseNum(kcalInput.value) : null;
+  const proteinPer100 = proteinInput ? parseNum(proteinInput.value) : null;
+
+  if (!grams || kcalPer100 == null) {
+    totalBox.innerHTML = "";
+    if (addBtn) addBtn.disabled = true;
+    return;
+  }
+
+  const kcalCalc = Math.round((kcalPer100 * grams) / 100);
+  const proteinCalc = proteinPer100 != null ? Math.round(((proteinPer100 * grams) / 100) * 10) / 10 : null;
+
+  totalBox.innerHTML = `<div class="plate-calc-total-num">${kcalCalc}<small>kcal${
+    proteinCalc != null ? ` · ${proteinCalc} g prot.` : ""
+  }</small></div>`;
+  if (addBtn) addBtn.disabled = false;
+}
+
+function cancelPlateSelection() {
+  plateSelection = null;
+  const nameInput = document.getElementById("plate-ingredient-input");
+  if (nameInput) {
+    nameInput.value = "";
+    nameInput.focus();
+  }
+  const suggestionsBox = document.getElementById("plate-suggestions");
+  if (suggestionsBox) suggestionsBox.innerHTML = "";
+  renderPlateCard();
+}
+
+function openPlatePhotoLightbox(url) {
+  overlayRoot.innerHTML = `
+    <div class="photo-lightbox" data-action="plate-close-photo">
+      <button type="button" class="photo-lightbox-close" data-action="plate-close-photo" aria-label="Cerrar">×</button>
+      <img src="${url}" class="photo-lightbox-img" data-action="plate-zoom-photo" alt="Foto ampliada">
     </div>
   `;
 }
 
-function savePlateCorrection() {
-  if (!plateSelection || !plateSelection.ean) return;
-  const kcalInput = document.getElementById("pv-kcal");
-  const proteinInput = document.getElementById("pv-protein");
+/** Añade la línea de la tarjeta al plato; si el dato venía de Mercadona y el
+ * usuario lo ha corregido, guarda esa corrección para siempre por EAN. */
+function commitPlateCard() {
+  if (!plateSelection) return;
+  const gramsInput = document.getElementById("plate-grams-input");
+  const kcalInput = document.getElementById("pc-kcal");
+  const proteinInput = document.getElementById("pc-protein");
+  const nameInput = document.getElementById("plate-ingredient-input");
+  if (!gramsInput || !kcalInput) return;
+
+  const grams = parseNum(gramsInput.value);
   const kcalPer100 = parseNum(kcalInput.value);
-  if (kcalPer100 == null) return;
+  if (!grams || kcalPer100 == null) return;
   const proteinPer100 = parseNum(proteinInput.value) || 0;
+  const name = (nameInput && nameInput.value.trim()) || plateSelection.name;
 
-  Store.saveNutritionCorrection(plateSelection.ean, { kcalPer100, proteinPer100 });
-  plateSelection.kcalPer100 = kcalPer100;
-  plateSelection.proteinPer100 = proteinPer100;
-  plateVerifyOpen = false;
-  renderPlatePreview();
-}
+  if (plateSelection.source === "mercadona" && plateSelection.ean) {
+    const cambiado = kcalPer100 !== plateSelection.kcalPer100 || proteinPer100 !== (plateSelection.proteinPer100 || 0);
+    if (cambiado) {
+      Store.saveNutritionCorrection(plateSelection.ean, { kcalPer100, proteinPer100 });
+    }
+  }
 
-function commitPlateLine(ingredient, grams) {
+  const existingIds = Store.getIngredients().map((i) => i.id);
+  const ingredient = Store.saveIngredient({
+    id: plateSelection.source === "local" ? plateSelection.id : newId(existingIds, name),
+    name,
+    kcalPer100,
+    proteinPer100,
+  });
+
   addPlateLine(ingredient, grams);
   plateSelection = null;
   appEl.innerHTML = renderCalcPlato();
@@ -1057,71 +1122,46 @@ function commitPlateLine(ingredient, grams) {
   if (freshInput) freshInput.focus();
 }
 
+/** Punto de entrada único desde Enter (nombre o gramos) y el botón "+". */
 function plateAddLine() {
   const nameInput = document.getElementById("plate-ingredient-input");
   const gramsInput = document.getElementById("plate-grams-input");
   const name = nameInput.value.trim();
+  if (!name) return;
   const grams = parseNum(gramsInput.value);
-  if (!name || !grams) return;
+  const suggestionsBox = document.getElementById("plate-suggestions");
+  if (suggestionsBox) suggestionsBox.innerHTML = "";
 
-  if (plateSelection && plateSelection.name === name) {
-    if (plateSelection.cargandoMacros) return; // toca esperar a que termine de cargar
-    if (plateSelection.kcalPer100 != null) {
-      const existingIds = Store.getIngredients().map((i) => i.id);
-      const ingredient = Store.saveIngredient({
-        id: plateSelection.source === "local" ? plateSelection.id : newId(existingIds, name),
-        name,
-        kcalPer100: plateSelection.kcalPer100,
-        proteinPer100: plateSelection.proteinPer100 || 0,
-      });
-      commitPlateLine(ingredient, grams);
-      return;
-    }
-    openQuickIngredientSheet(name, grams);
+  // Ya hay una tarjeta abierta para este mismo nombre: un Enter aquí intenta
+  // añadir directamente, igual que el botón "Añadir línea" de la tarjeta.
+  if (plateSelection && plateSelection.name === name && !plateSelection.cargandoMacros) {
+    if (grams) commitPlateCard();
     return;
   }
 
+  // Nombre exacto ya guardado: lo cargamos en la tarjeta para que el usuario
+  // vea siempre qué se va a sumar antes de confirmar (nunca a ciegas).
   const ingredient = Store.findIngredientByName(name);
   if (ingredient) {
-    commitPlateLine(ingredient, grams);
+    plateSelection = {
+      source: "local",
+      id: ingredient.id,
+      name: ingredient.name,
+      kcalPer100: ingredient.kcalPer100,
+      proteinPer100: ingredient.proteinPer100,
+      photos: [],
+      photoEtiqueta: null,
+    };
+    renderPlateCard();
+    if (gramsInput) gramsInput.focus();
     return;
   }
 
-  openQuickIngredientSheet(name, grams);
-}
-
-function openQuickIngredientSheet(name, grams) {
-  overlayRoot.innerHTML = `
-    <div class="sheet-overlay">
-      <div class="sheet sheet--text" data-stop>
-        <div class="sheet-title">//Nuevo ingrediente</div>
-        <div class="field" style="margin-top:14px;">
-          <label>Nombre</label>
-          <input type="text" id="qi-name" value="${escapeHtml(name)}">
-        </div>
-        <div style="display:flex; gap:10px;">
-          <div class="field" style="flex:1"><label>Kcal / 100 g</label><input type="number" inputmode="decimal" id="qi-kcal" placeholder="0"></div>
-          <div class="field" style="flex:1"><label>Proteína / 100 g</label><input type="text" inputmode="decimal" id="qi-protein" placeholder="0"></div>
-        </div>
-        <button class="btn-primary-pill" style="background:var(--yellow); color:#4a4930;" data-action="save-quick-ingredient" data-grams="${grams}">Guardar y añadir</button>
-      </div>
-    </div>
-  `;
-  document.getElementById("qi-name").focus();
-}
-
-function saveQuickIngredient(gramsStr) {
-  const name = document.getElementById("qi-name").value.trim();
-  if (!name) return;
-  const kcalPer100 = parseNum(document.getElementById("qi-kcal").value) || 0;
-  const proteinPer100 = parseNum(document.getElementById("qi-protein").value) || 0;
-  const existingIds = Store.getIngredients().map((i) => i.id);
-  const ingredient = Store.saveIngredient({ id: newId(existingIds, name), name, kcalPer100, proteinPer100 });
-  closeOverlay();
-  const grams = parseNum(gramsStr);
-  if (grams) addPlateLine(ingredient, grams);
-  appEl.innerHTML = renderCalcPlato();
-  wirePlateAddRow();
+  // Nada encontrado: alta manual, en la misma tarjeta — nunca en un popup.
+  plateSelection = { source: "manual", name, kcalPer100: null, proteinPer100: null, photos: [], photoEtiqueta: null };
+  renderPlateCard();
+  const kcalInput = document.getElementById("pc-kcal");
+  if (kcalInput) kcalInput.focus();
 }
 
 function plateSave() {
@@ -1890,18 +1930,23 @@ document.addEventListener("click", (e) => {
     case "plate-save":
       plateSave();
       break;
-    case "save-quick-ingredient":
-      saveQuickIngredient(t.dataset.grams);
-      break;
     case "plate-pick-suggestion":
       pickPlateSuggestion(parseInt(t.dataset.idx, 10));
       break;
-    case "plate-toggle-verify":
-      plateVerifyOpen = !plateVerifyOpen;
-      renderPlatePreview();
+    case "plate-card-add":
+      commitPlateCard();
       break;
-    case "plate-save-correction":
-      savePlateCorrection();
+    case "plate-card-cancel":
+      cancelPlateSelection();
+      break;
+    case "plate-open-photo":
+      openPlatePhotoLightbox(t.dataset.url);
+      break;
+    case "plate-zoom-photo":
+      t.classList.toggle("zoomed");
+      break;
+    case "plate-close-photo":
+      closeOverlay();
       break;
     case "add-weight":
       openWeightKeypad(t.dataset.slug);

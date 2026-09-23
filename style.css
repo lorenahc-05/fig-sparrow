@@ -472,7 +472,7 @@ a, .link { color: inherit; text-decoration: none; }
   font-weight: 700;
   font-family: inherit;
 }
-.plate-add-row .plate-grams-input { flex: 0 0 64px; }
+.plate-add-row .plate-grams-input { flex: 0 0 56px; width: 56px; min-width: 0; padding-left: 6px; padding-right: 6px; text-align: center; }
 .plate-add-row .icon-btn { flex: 0 0 44px; height: 44px; font-size: 20px; }
 
 /* ---------- gym: índice ---------- */
@@ -799,61 +799,94 @@ a, .link { color: inherit; text-decoration: none; }
 }
 .mkd-name small { opacity: 0.7; font-weight: 500; }
 
-/* ---------- previsualización del producto elegido, bajo la fila de añadir ---------- */
+/* ---------- tarjeta grande del producto elegido (sustituye a cualquier modal) ---------- */
 
-.plate-preview-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border: 1.5px dashed var(--yellow-line);
-  padding: 8px 10px;
-  margin: 10px 0;
-  font-size: 12px;
+.plate-calc-total { min-height: 2px; }
+.plate-calc-total-num {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  margin: 14px 2px 8px;
 }
-.plate-preview-warn { color: var(--yellow-soft); }
-.plate-preview-info { flex: 1; min-width: 0; }
-.plate-preview-name { font-size: 13px; font-weight: 700; }
-.plate-preview-sub { font-size: 10.5px; opacity: 0.75; margin-top: 2px; }
-.plate-preview-total { font-size: 16px; font-weight: 800; text-align: right; white-space: nowrap; }
-.plate-preview-total small { display: block; font-size: 9.5px; font-weight: 600; opacity: 0.75; }
-
-.plate-verify-toggle {
-  display: block;
-  width: 100%;
-  background: none;
-  border: none;
-  color: inherit;
-  opacity: 0.75;
-  font-size: 11px;
+.plate-calc-total-num small {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.03em;
-  text-decoration: underline;
-  padding: 2px 0 10px;
-  cursor: pointer;
-  font-family: inherit;
-  text-align: left;
+  opacity: 0.75;
+  vertical-align: middle;
 }
 
-.plate-verify-panel {
+.plate-card {
   border: var(--border-w) solid currentColor;
-  padding: 10px;
-  margin-bottom: 10px;
+  padding: 14px;
+  margin-bottom: 14px;
 }
-.plate-verify-photos {
+.plate-card-loading { font-size: 13px; padding: 6px 2px; opacity: 0.8; }
+
+.plate-card-photos {
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
-.plate-verify-photo {
-  height: 130px;
+.plate-card-photo {
+  height: 160px;
   width: auto;
   flex: 0 0 auto;
   border: 1px solid currentColor;
+  cursor: zoom-in;
 }
-.plate-verify-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
-.plate-verify-form .field { flex: 1; min-width: 110px; margin-bottom: 0; }
-.plate-verify-form .btn-add-line { flex: 1 1 100%; margin-top: 2px; }
+
+.plate-card-name { font-size: 18px; font-weight: 800; line-height: 1.2; margin-bottom: 10px; }
+
+.plate-card-fields { display: flex; gap: 10px; }
+.plate-card-fields .field { flex: 1; margin-bottom: 0; }
+
+.plate-card-actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.plate-card-actions .btn-primary-pill { flex: 1 1 auto; }
+.plate-card-actions .btn-primary-pill:disabled { opacity: 0.45; cursor: default; }
+.plate-card-actions .btn-add-line { flex: 0 0 auto; padding: 10px 16px; }
+
+/* ---------- visor de fotos a pantalla completa, con zoom al tocar ---------- */
+
+.photo-lightbox {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.92);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+  padding: 20px;
+}
+.photo-lightbox-img {
+  max-width: 100%;
+  max-height: 100%;
+  touch-action: pinch-zoom;
+  cursor: zoom-in;
+}
+.photo-lightbox-img.zoomed {
+  max-width: none;
+  max-height: none;
+  width: 220%;
+  cursor: zoom-out;
+}
+.photo-lightbox-close {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border: 1.5px solid #fff;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  z-index: 91;
+}
 
 /* ============================================================
    HOME — pantalla de entrada con foto de fondo
