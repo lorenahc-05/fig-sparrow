@@ -1056,9 +1056,16 @@ function recalcPlateCard() {
   const kcalCalc = Math.round((kcalPer100 * grams) / 100);
   const proteinCalc = proteinPer100 != null ? Math.round(((proteinPer100 * grams) / 100) * 10) / 10 : null;
 
-  totalBox.innerHTML = `<div class="plate-calc-total-num">${kcalCalc}<small>kcal${
-    proteinCalc != null ? ` · ${proteinCalc} g prot.` : ""
-  }</small></div>`;
+  const baseProtein = proteinPer100 != null ? ` · ${fmtNum(proteinPer100)} g prot.` : "";
+  totalBox.innerHTML = `
+    <div class="plate-calc-line">
+      <div class="plate-calc-base">
+        <span>${fmtNum(kcalPer100)} kcal${baseProtein}</span>
+        <span>por 100 g × ${fmtNum(grams)} g</span>
+      </div>
+      <span class="plate-calc-eq">=</span>
+      <div class="plate-calc-total-num">${kcalCalc}<small>kcal${proteinCalc != null ? ` · ${fmtNum(proteinCalc)} g prot.` : ""}</small></div>
+    </div>`;
   if (addBtn) addBtn.disabled = false;
 }
 
