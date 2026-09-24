@@ -1059,10 +1059,7 @@ function recalcPlateCard() {
   const baseProtein = proteinPer100 != null ? ` · ${fmtNum(proteinPer100)} g prot.` : "";
   totalBox.innerHTML = `
     <div class="plate-calc-line">
-      <div class="plate-calc-base">
-        <span>${fmtNum(kcalPer100)} kcal${baseProtein}</span>
-        <span>por 100 g × ${fmtNum(grams)} g</span>
-      </div>
+      <div class="plate-calc-base">${fmtNum(kcalPer100)} kcal/100g${baseProtein}</div>
       <span class="plate-calc-eq">=</span>
       <div class="plate-calc-total-num">${kcalCalc}<small>kcal${proteinCalc != null ? ` · ${fmtNum(proteinCalc)} g prot.` : ""}</small></div>
     </div>`;
