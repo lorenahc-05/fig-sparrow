@@ -672,16 +672,33 @@ const WORKOUTS = {
     name: "Full body sculpt",
     subtitle: "Circuito · 3 rondas · RIR 3",
     warmup: "5 min cardio suave + movilidad de cadera y hombro",
+    rounds: 3,
     note: "Circuito: encadena los 8 ejercicios con 20–30 s de descanso entre cada uno y, al terminar la ronda completa, descansa 60–90 s antes de repetir (3 rondas en total). Peso moderado en las zancadas laterales y en la curtsy. Prioriza tus 3 días principales — deja 48 h hasta tu siguiente día de pierna.<br><small>Capturas del vídeo de @haleyywheelerr.</small>",
     exercises: [
-      ex("curl-press-mancuernas", 3, "10-12", "3", "20-30 s"),
-      ex("goblet-squat-zancada", 3, "8 / lado", "3", "20-30 s"),
-      ex("remo-elevacion-lateral", 3, "10-12", "3", "20-30 s"),
-      ex("zancada-atras-rodilla", 3, "8-10 / pierna", "3", "20-30 s"),
-      ex("zancada-lateral-alterna", 3, "8-10 / lado", "3", "20-30 s"),
-      ex("seesaw-rows", 3, "10 / brazo", "3", "20-30 s"),
-      ex("curtsy-lunge-estatica", 3, "8-10 / pierna", "3", "20-30 s"),
-      ex("elevacion-frontal", 3, "12-15", "3", "20-30 s"),
+      ex("curl-press-mancuernas", 3, "10-12", "3", "20-30 s", {
+        photos: ["assets/gym/full-body-sculpt/curl-press-mancuernas-1.jpg", "assets/gym/full-body-sculpt/curl-press-mancuernas-2.jpg"],
+      }),
+      ex("goblet-squat-zancada", 3, "8 / lado", "3", "20-30 s", {
+        photos: ["assets/gym/full-body-sculpt/goblet-squat-zancada-1.jpg", "assets/gym/full-body-sculpt/goblet-squat-zancada-2.jpg"],
+      }),
+      ex("remo-elevacion-lateral", 3, "10-12", "3", "20-30 s", {
+        photos: ["assets/gym/full-body-sculpt/remo-elevacion-lateral-1.jpg", "assets/gym/full-body-sculpt/remo-elevacion-lateral-2.jpg"],
+      }),
+      ex("zancada-atras-rodilla", 3, "8-10 / pierna", "3", "20-30 s", {
+        photos: ["assets/gym/full-body-sculpt/zancada-atras-rodilla-1.jpg", "assets/gym/full-body-sculpt/zancada-atras-rodilla-2.jpg"],
+      }),
+      ex("zancada-lateral-alterna", 3, "8-10 / lado", "3", "20-30 s", {
+        photos: ["assets/gym/full-body-sculpt/zancada-lateral-alterna-1.jpg", "assets/gym/full-body-sculpt/zancada-lateral-alterna-2.jpg"],
+      }),
+      ex("seesaw-rows", 3, "10 / brazo", "3", "20-30 s", {
+        photos: ["assets/gym/full-body-sculpt/seesaw-rows-1.jpg", "assets/gym/full-body-sculpt/seesaw-rows-2.jpg"],
+      }),
+      ex("curtsy-lunge-estatica", 3, "8-10 / pierna", "3", "20-30 s", {
+        photos: ["assets/gym/full-body-sculpt/curtsy-lunge-estatica-1.jpg", "assets/gym/full-body-sculpt/curtsy-lunge-estatica-2.jpg"],
+      }),
+      ex("elevacion-frontal", 3, "12-15", "3", "20-30 s", {
+        photos: ["assets/gym/full-body-sculpt/elevacion-frontal-1.jpg", "assets/gym/full-body-sculpt/elevacion-frontal-2.jpg"],
+      }),
     ],
   },
   "natacion": {

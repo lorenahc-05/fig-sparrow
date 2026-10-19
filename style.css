@@ -558,6 +558,49 @@ a, .link { color: inherit; text-decoration: none; }
 .exercise-card.no-weight-card .ex-head { margin-bottom: 0; }
 .exercise-card.no-weight-card .ex-actions { margin-top: 10px; }
 
+/* ---------- gym: rondas de circuito ---------- */
+
+.rounds-row { display: flex; gap: 8px; margin: 2px 0 18px; }
+.round-btn {
+  flex: 1;
+  padding: 11px 0;
+  border: var(--border-w) solid var(--garnet);
+  background: none;
+  color: var(--garnet);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  font-family: inherit;
+}
+.round-btn.is-done { background: var(--garnet); color: var(--garnet-cream); }
+
+/* ---------- gym: ejercicios de circuito con fotos ---------- */
+
+.ex-circuit-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.ex-num {
+  flex: 0 0 26px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--garnet);
+  color: var(--garnet-cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+.ex-circuit-name { font-size: 15px; font-weight: 800; text-transform: uppercase; line-height: 1.15; }
+
+.ex-reps-big { margin: 8px 0 2px; font-size: 36px; font-weight: 800; line-height: 1; }
+.ex-reps-big small { margin-left: 6px; font-size: 14px; font-weight: 700; text-transform: uppercase; opacity: 0.75; }
+
+.ex-circuit-desc { font-size: 12.5px; font-weight: 600; opacity: 0.85; margin: 2px 0 10px; }
+
+.ex-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+.ex-photos img { width: 100%; aspect-ratio: 9 / 16; object-fit: cover; border: var(--border-w) solid var(--garnet); display: block; }
+
 /* ---------- historial ---------- */
 
 .history-row { border-top: 1px solid var(--garnet-line); padding: 13px 0; }

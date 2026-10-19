@@ -1282,17 +1282,36 @@ function renderWorkout(id) {
   const w = WORKOUTS[id];
 
   const exCards = w.exercises
-    .map((exItem) => {
+    .map((exItem, idx) => {
       const def = EXERCISES[exItem.slug];
       const scheme = `${exItem.sets}×${exItem.reps}${exItem.rir !== "—" ? " · RIR " + exItem.rir : ""}`;
+
+      // Ejercicios de circuito (con fotos): número + nombre + reps en
+      // grande + descripción + las dos fotos reales, en vez de la
+      // cabecera habitual de nombre + esquema de series.
+      const circuitHead =
+        exItem.photos && exItem.photos.length
+          ? `
+            <div class="ex-circuit-head">
+              <span class="ex-num">${idx + 1}</span>
+              <div class="ex-circuit-name">${def.name}</div>
+            </div>
+            <div class="ex-reps-big">${exItem.reps}<small>reps</small></div>
+            ${def.detail ? `<div class="ex-circuit-desc">${def.detail}</div>` : ""}
+            <div class="ex-photos">${exItem.photos.map((src) => `<img src="${src}" alt="" loading="lazy">`).join("")}</div>
+          `
+          : "";
 
       if (!exItem.trackWeight) {
         return `
           <div class="exercise-card no-weight-card">
-            <div class="ex-head">
-              <div class="ex-name">${def.name}</div>
-              <div class="ex-scheme">${exItem.sets}×${exItem.reps}</div>
-            </div>
+            ${
+              circuitHead ||
+              `<div class="ex-head">
+                <div class="ex-name">${def.name}</div>
+                <div class="ex-scheme">${exItem.sets}×${exItem.reps}</div>
+              </div>`
+            }
             <div class="ex-actions">
               <span></span>
               ${restChip(exItem.slug, exItem.rest)}
@@ -1311,10 +1330,13 @@ function renderWorkout(id) {
 
       return `
         <div class="exercise-card">
-          <div class="ex-head">
-            <div class="ex-name">${def.name}</div>
-            <div class="ex-scheme">${scheme}</div>
-          </div>
+          ${
+            circuitHead ||
+            `<div class="ex-head">
+              <div class="ex-name">${def.name}</div>
+              <div class="ex-scheme">${scheme}</div>
+            </div>`
+          }
           <div class="ex-last">${lastLine}</div>
           ${historyLine ? `<div class="ex-history">${historyLine}</div>` : ""}
           <div class="ex-actions">
@@ -1326,6 +1348,13 @@ function renderWorkout(id) {
     })
     .join("");
 
+  const roundsRow = w.rounds
+    ? `<div class="rounds-row">${Array.from(
+        { length: w.rounds },
+        (_, i) => `<button type="button" class="round-btn" data-action="toggle-round">Ronda ${i + 1}</button>`
+      ).join("")}</div>`
+    : "";
+
   return `
     <div class="screen screen--gym">
       <div class="topbar">
@@ -1335,6 +1364,7 @@ function renderWorkout(id) {
       <div class="content">
         <div class="h1" style="font-size:38px;">${w.name}</div>
         <div class="warmup-line">//${w.warmup}</div>
+        ${roundsRow}
         <div class="exercise-list">${exCards}</div>
         ${w.note ? `<div class="note-block" style="opacity:0.85;">${w.note}</div>` : ""}
       </div>
@@ -1954,6 +1984,9 @@ document.addEventListener("click", (e) => {
       break;
     case "add-weight":
       openWeightKeypad(t.dataset.slug);
+      break;
+    case "toggle-round":
+      t.classList.toggle("is-done");
       break;
     case "toggle-rest":
       toggleRestTimer(t.dataset.slug, parseInt(t.dataset.restSeconds, 10));
