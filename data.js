@@ -605,6 +605,14 @@ const EXERCISES = {
   "face-pull":                    { name: "Face pull", detail: "" },
   "hip-thrust-unilateral":        { name: "Hip thrust a una pierna", detail: "o con banda" },
   "abductores":                { name: "Abductores en máquina", detail: "" },
+  "curl-press-mancuernas":    { name: "Curl to press", detail: "mancuernas: curl de bíceps + press sobre la cabeza" },
+  "goblet-squat-zancada":        { name: "Goblet squat + zancada lateral", detail: "mancuerna sujeta en el pecho" },
+  "remo-elevacion-lateral":    { name: "Row + lateral raise", detail: "remo inclinado + elevación lateral con mancuernas" },
+  "zancada-atras-rodilla":        { name: "Reverse lunge + high knee", detail: "zancada atrás + rodilla arriba", bodyweight: true },
+  "zancada-lateral-alterna":    { name: "Alt. lateral lunge", detail: "zancada lateral alterna, mancuerna al suelo" },
+  "seesaw-rows":                { name: "Seesaw rows", detail: "remo alterno tipo balancín, torso inclinado" },
+  "curtsy-lunge-estatica":        { name: "Static curtsy lunge", detail: "zancada cruzada (curtsy) sin desplazarte, peso moderado" },
+  "elevacion-frontal":            { name: "Front raise", detail: "elevación frontal con mancuernas hasta la altura del hombro" },
 };
 
 function ex(slug, sets, reps, rir, rest, opts) {
@@ -658,6 +666,24 @@ const WORKOUTS = {
       ex("plancha-lateral", 2, "30 s / lado", "—", "45 s"),
     ],
   },
+  "full-body-sculpt": {
+    id: "full-body-sculpt",
+    group: "base",
+    name: "Full body sculpt",
+    subtitle: "Circuito · 3 rondas · RIR 3",
+    warmup: "5 min cardio suave + movilidad de cadera y hombro",
+    note: "Circuito: encadena los 8 ejercicios con 20–30 s de descanso entre cada uno y, al terminar la ronda completa, descansa 60–90 s antes de repetir (3 rondas en total). Peso moderado en las zancadas laterales y en la curtsy. Prioriza tus 3 días principales — deja 48 h hasta tu siguiente día de pierna.<br><small>Capturas del vídeo de @haleyywheelerr.</small>",
+    exercises: [
+      ex("curl-press-mancuernas", 3, "10-12", "3", "20-30 s"),
+      ex("goblet-squat-zancada", 3, "8 / lado", "3", "20-30 s"),
+      ex("remo-elevacion-lateral", 3, "10-12", "3", "20-30 s"),
+      ex("zancada-atras-rodilla", 3, "8-10 / pierna", "3", "20-30 s"),
+      ex("zancada-lateral-alterna", 3, "8-10 / lado", "3", "20-30 s"),
+      ex("seesaw-rows", 3, "10 / brazo", "3", "20-30 s"),
+      ex("curtsy-lunge-estatica", 3, "8-10 / pierna", "3", "20-30 s"),
+      ex("elevacion-frontal", 3, "12-15", "3", "20-30 s"),
+    ],
+  },
   "natacion": {
     id: "natacion",
     group: "base",
@@ -695,7 +721,7 @@ const WORKOUTS = {
   },
 };
 
-const WORKOUT_ORDER_BASE = ["pierna-a", "tren-superior", "pierna-b", "natacion"];
+const WORKOUT_ORDER_BASE = ["pierna-a", "tren-superior", "pierna-b", "full-body-sculpt", "natacion"];
 const WORKOUT_ORDER_EXT = ["full-body-a", "full-body-b"];
 
 const PROGRESSION_NOTE =
